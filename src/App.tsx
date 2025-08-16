@@ -365,10 +365,8 @@ function App() {
 
   const menuItems = [
     { id: 'startseite', label: 'Startseite', icon: '🏠' },
-    { id: 'bibliothek', label: 'Bibliothek', icon: '📚' },
     { id: 'kalender', label: 'Kalender', icon: '📅' },
     { id: 'planer', label: 'Planer', icon: '📋' },
-    { id: 'favoriten', label: 'Favoriten', icon: '❤️' },
     { id: 'stories', label: 'Stories', icon: '📖' },
     { id: 'notizen', label: 'Notizen', icon: '📝' },
     { id: 'einstellungen', label: 'Einstellungen', icon: '⚙️' },
