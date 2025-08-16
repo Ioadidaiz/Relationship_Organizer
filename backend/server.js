@@ -116,16 +116,16 @@ app.get('/api/events/:id', (req, res) => {
 
 // Neues Event erstellen
 app.post('/api/events', (req, res) => {
-    const { title, description, date, is_recurring, recurrence_type } = req.body;
+    const { title, description, date, end_date, is_recurring, recurrence_type } = req.body;
     
     if (!title || !date) {
         return res.status(400).json({ error: 'Titel und Datum sind erforderlich' });
     }
     
     db.run(`
-        INSERT INTO events (title, description, date, is_recurring, recurrence_type)
-        VALUES (?, ?, ?, ?, ?)
-    `, [title, description, date, is_recurring ? 1 : 0, recurrence_type], function(err) {
+        INSERT INTO events (title, description, date, end_date, is_recurring, recurrence_type)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `, [title, description, date, end_date, is_recurring ? 1 : 0, recurrence_type], function(err) {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
@@ -135,6 +135,7 @@ app.post('/api/events', (req, res) => {
             title,
             description,
             date,
+            end_date,
             is_recurring: is_recurring ? 1 : 0,
             recurrence_type,
             images: []
@@ -145,14 +146,14 @@ app.post('/api/events', (req, res) => {
 // Event aktualisieren
 app.put('/api/events/:id', (req, res) => {
     const eventId = req.params.id;
-    const { title, description, date, is_recurring, recurrence_type } = req.body;
+    const { title, description, date, end_date, is_recurring, recurrence_type } = req.body;
     
     db.run(`
         UPDATE events 
-        SET title = ?, description = ?, date = ?, is_recurring = ?, 
+        SET title = ?, description = ?, date = ?, end_date = ?, is_recurring = ?, 
             recurrence_type = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-    `, [title, description, date, is_recurring ? 1 : 0, recurrence_type, eventId], function(err) {
+    `, [title, description, date, end_date, is_recurring ? 1 : 0, recurrence_type, eventId], function(err) {
         if (err) {
             return res.status(500).json({ error: err.message });
         }

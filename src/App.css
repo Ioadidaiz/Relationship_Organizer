@@ -677,25 +677,29 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   z-index: 1000;
 }
 
 .event-modal {
-  background-color: #1a1a1a;
-  padding: 30px;
+  background: #222;
   border-radius: 12px;
-  width: 500px;
-  max-width: 90vw;
+  padding: 30px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: #ffffff;
 }
 
 .event-modal h3 {
-  color: #fff;
-  margin-bottom: 20px;
-  font-size: 20px;
+  margin: 0 0 20px 0;
+  font-size: 24px;
+  color: #e50914;
+  font-weight: 500;
 }
 
 .form-group {
@@ -704,80 +708,144 @@
 
 .form-group label {
   display: block;
-  color: #ccc;
   margin-bottom: 8px;
-  font-size: 14px;
+  font-weight: 500;
+  color: #ffffff;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group textarea,
+.form-group select {
   width: 100%;
   padding: 12px;
-  background-color: #333;
+  background: #333;
   border: 1px solid #555;
   border-radius: 6px;
-  color: #fff;
+  color: #ffffff;
   font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #e50914;
 }
 
 .form-group textarea {
-  min-height: 80px;
   resize: vertical;
+  min-height: 80px;
 }
 
-.modal-actions {
+/* Drag & Drop Bereich */
+.drag-drop-area {
+  border: 2px dashed #555;
+  border-radius: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #1a1a1a;
+}
+
+.drag-drop-area:hover {
+  border-color: #e50914;
+  background: #222;
+}
+
+.drag-drop-area.drag-over {
+  border-color: #e50914;
+  background: #2a1415;
+  transform: scale(1.02);
+}
+
+.drag-drop-content {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 30px;
-}
-
-.cancel-btn,
-.save-btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.cancel-btn {
-  background-color: #666;
-  color: white;
-}
-
-.cancel-btn:hover {
-  background-color: #777;
-}
-
-.save-btn {
-  background-color: #e50914;
-  color: white;
-}
-
-.save-btn:hover {
-  background-color: #d40813;
-}
-
-/* Checkbox Styles */
-.checkbox-label {
-  display: flex !important;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  color: #ccc !important;
-  margin-bottom: 0 !important;
+  gap: 10px;
 }
 
-.checkbox-label input[type="checkbox"] {
-  width: auto !important;
+.drag-drop-icon {
+  font-size: 48px;
+  opacity: 0.7;
+}
+
+.drag-drop-content p {
   margin: 0;
-  cursor: pointer;
+  font-size: 16px;
+  color: #ccc;
 }
 
-.checkbox-label .checkmark {
+.drag-drop-content small {
+  color: #888;
+  font-size: 12px;
+}
+
+/* Bild-Vorschau */
+.selected-images {
+  margin-top: 15px;
+}
+
+.selected-images h4 {
+  margin-bottom: 10px;
   font-size: 14px;
+  color: #e50914;
+}
+
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.image-preview-item {
+  position: relative;
+  background: #333;
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+}
+
+.preview-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+  margin: 0 auto 5px;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #e50914;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.remove-image-btn:hover {
+  background: #b8070f;
+}
+
+.file-name {
+  font-size: 10px;
+  color: #ccc;
+  display: block;
+  word-break: break-all;
+  max-width: 80px;
 }

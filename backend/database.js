@@ -13,6 +13,7 @@ db.serialize(() => {
         title TEXT NOT NULL,
         description TEXT,
         date TEXT NOT NULL,
+        end_date TEXT,
         is_recurring INTEGER DEFAULT 0,
         recurrence_type TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

@@ -5,6 +5,7 @@ export interface CalendarEvent {
   title: string;
   description?: string;
   date: string;
+  end_date?: string; // Für mehrtägige Events
   is_recurring?: boolean;
   recurrence_type?: string;
   images?: ImageData[];

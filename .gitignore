@@ -5,6 +5,12 @@
 /.pnp
 .pnp.js
 
+# backend
+backend/node_modules/
+backend/package-lock.json
+backend/relationship_organizer.db
+backend/uploads/
+
 # testing
 /coverage
 

@@ -10,7 +10,16 @@ function App() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
-  const [newEvent, setNewEvent] = useState({ title: '', type: 'anniversary', description: '', recurring: false });
+  const [selectedEndDate, setSelectedEndDate] = useState('');
+  const [newEvent, setNewEvent] = useState({ 
+    title: '', 
+    type: 'anniversary', 
+    description: '', 
+    recurring: false,
+    isMultiDay: false 
+  });
+  const [eventImages, setEventImages] = useState<File[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [serverConnected, setServerConnected] = useState(false);
@@ -54,19 +63,24 @@ function App() {
   const handleDayClick = (date: string) => {
     setSelectedDate(date);
     setEditingEvent(null);
-    setNewEvent({ title: '', type: 'anniversary', description: '', recurring: false });
+    setNewEvent({ title: '', type: 'anniversary', description: '', recurring: false, isMultiDay: false });
+    setSelectedEndDate('');
+    setEventImages([]);
     setShowEventModal(true);
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
     setEditingEvent(event);
     setSelectedDate(event.date);
+    setSelectedEndDate(event.end_date || '');
     setNewEvent({ 
       title: event.title, 
       type: 'anniversary',
       description: event.description || '',
-      recurring: event.is_recurring || false
+      recurring: event.is_recurring || false,
+      isMultiDay: !!(event.end_date && event.end_date !== event.date)
     });
+    setEventImages([]);
     setShowEventModal(true);
   };
 
@@ -110,36 +124,90 @@ function App() {
       }
       setShowEventModal(false);
       setEditingEvent(null);
-      setNewEvent({ title: '', type: 'anniversary', description: '', recurring: false });
+      setNewEvent({ title: '', type: 'anniversary', description: '', recurring: false, isMultiDay: false });
       return;
     }
     
     try {
       setIsLoading(true);
+      
+      // Erst das Event erstellen/aktualisieren
       const eventData: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'> = {
         title: newEvent.title,
         description: newEvent.description,
         date: selectedDate,
+        end_date: newEvent.isMultiDay ? selectedEndDate : undefined,
         is_recurring: newEvent.recurring,
         recurrence_type: newEvent.recurring ? 'yearly' : undefined
       };
 
+      let savedEventId: number;
+      
       if (editingEvent && editingEvent.id) {
         await apiService.updateEvent(editingEvent.id, eventData);
+        savedEventId = editingEvent.id;
       } else {
-        await apiService.createEvent(eventData);
+        const savedEvent = await apiService.createEvent(eventData);
+        savedEventId = savedEvent.id!;
+      }
+
+      // Dann Bilder hochladen und mit Event verknüpfen
+      for (const imageFile of eventImages) {
+        try {
+          const uploadedImage = await apiService.uploadImage(imageFile, `Image for event: ${newEvent.title}`);
+          await apiService.addImageToEvent(savedEventId, uploadedImage.id!);
+        } catch (imgError) {
+          console.error('Fehler beim Hochladen des Bildes:', imgError);
+        }
       }
 
       await loadEvents();
       setShowEventModal(false);
       setEditingEvent(null);
-      setNewEvent({ title: '', type: 'anniversary', description: '', recurring: false });
+      setNewEvent({ title: '', type: 'anniversary', description: '', recurring: false, isMultiDay: false });
+      setSelectedEndDate('');
+      setEventImages([]);
     } catch (err) {
       console.error('Fehler beim Speichern des Events:', err);
       setError('Fehler beim Speichern des Events.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Drag & Drop für Bilder
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      setEventImages(prev => [...prev, ...imageFiles]);
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      const imageFiles = files.filter(file => file.type.startsWith('image/'));
+      setEventImages(prev => [...prev, ...imageFiles]);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setEventImages(prev => prev.filter((_, i) => i !== index));
   };
 
   // Navigation zwischen Monaten
@@ -162,7 +230,16 @@ function App() {
   // Hilfsfunktion für wiederkehrende Ereignisse
   const getEventsForDate = (date: string) => {
     return events.filter(event => {
+      // Für normale Events oder Start-/Enddatum
       if (event.date === date) return true;
+      
+      // Für mehrtägige Events - prüfe ob das Datum im Bereich liegt
+      if (event.end_date && event.end_date !== event.date) {
+        const eventStart = new Date(event.date);
+        const eventEnd = new Date(event.end_date);
+        const checkDate = new Date(date);
+        return checkDate >= eventStart && checkDate <= eventEnd;
+      }
       
       // Für wiederkehrende Ereignisse
       if (event.is_recurring) {
@@ -328,6 +405,30 @@ function App() {
                       onChange={(e) => setSelectedDate(e.target.value)}
                     />
                   </div>
+                  
+                  <div className="form-group">
+                    <label className="checkbox-label">
+                      <input 
+                        type="checkbox" 
+                        checked={newEvent.isMultiDay}
+                        onChange={(e) => setNewEvent({...newEvent, isMultiDay: e.target.checked})}
+                      />
+                      <span className="checkmark"></span>
+                      Mehrtägiges Event
+                    </label>
+                  </div>
+                  
+                  {newEvent.isMultiDay && (
+                    <div className="form-group">
+                      <label>Enddatum</label>
+                      <input 
+                        type="date" 
+                        value={selectedEndDate} 
+                        onChange={(e) => setSelectedEndDate(e.target.value)}
+                        min={selectedDate}
+                      />
+                    </div>
+                  )}
                   <div className="form-group">
                     <label>Titel</label>
                     <input 
@@ -367,6 +468,56 @@ function App() {
                       <span className="checkmark"></span>
                       Jährlich wiederholen (z.B. für Geburtstage, Jahrestage)
                     </label>
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Bilder hinzufügen</label>
+                    <div 
+                      className={`drag-drop-area ${isDragOver ? 'drag-over' : ''}`}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => document.getElementById('file-input')?.click()}
+                    >
+                      <div className="drag-drop-content">
+                        <span className="drag-drop-icon">📁</span>
+                        <p>Bilder hier hineinziehen oder klicken zum Auswählen</p>
+                        <small>PNG, JPG, JPEG bis 10MB</small>
+                      </div>
+                    </div>
+                    <input
+                      id="file-input"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={handleImageSelect}
+                    />
+                    
+                    {eventImages.length > 0 && (
+                      <div className="selected-images">
+                        <h4>Ausgewählte Bilder:</h4>
+                        <div className="image-preview-grid">
+                          {eventImages.map((file, index) => (
+                            <div key={index} className="image-preview-item">
+                              <img 
+                                src={URL.createObjectURL(file)} 
+                                alt={file.name} 
+                                className="preview-image"
+                              />
+                              <button 
+                                className="remove-image-btn"
+                                onClick={() => removeImage(index)}
+                                type="button"
+                              >
+                                ✕
+                              </button>
+                              <span className="file-name">{file.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="modal-actions">
                     <button className="cancel-btn" onClick={() => setShowEventModal(false)}>
