@@ -587,25 +587,59 @@ function App() {
                 <div className="rail-items">
                   {getUpcomingEvents().length > 0 ? (
                     getUpcomingEvents().map((event, index) => (
-                      <div key={event.id || index} className="rail-card" onClick={() => handleEditEvent(event)}>
-                        <div className="card-image">
-                          <img 
-                            src={event.displayImage} 
-                            alt={event.title}
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = '/image1.jpg'; // Fallback wenn Bild nicht lädt
-                            }}
-                          />
-                        </div>
-                        <div className="card-content">
-                          <h4>{event.title}</h4>
-                          <p>{formatDaysUntil(event.daysUntil)}</p>
-                          <small>{new Date(event.date).toLocaleDateString('de-DE', { 
-                            day: '2-digit', 
-                            month: 'short',
-                            year: 'numeric'
-                          })}</small>
+                      <div key={event.id || index} className="rail-card flip-card" onClick={() => handleEditEvent(event)}>
+                        <div className="flip-card-inner">
+                          {/* Vorderseite */}
+                          <div className="flip-card-front">
+                            <div className="card-image">
+                              <img 
+                                src={event.displayImage} 
+                                alt={event.title}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = '/image1.jpg';
+                                }}
+                              />
+                            </div>
+                            <div className="card-content">
+                              <h4>{event.title}</h4>
+                              <p>{formatDaysUntil(event.daysUntil)}</p>
+                              <small>{new Date(event.date).toLocaleDateString('de-DE', { 
+                                day: '2-digit', 
+                                month: 'short',
+                                year: 'numeric'
+                              })}</small>
+                            </div>
+                          </div>
+                          
+                          {/* Rückseite */}
+                          <div className="flip-card-back">
+                            <div className="card-image">
+                              <img 
+                                src={event.displayImage} 
+                                alt={event.title}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = '/image1.jpg';
+                                }}
+                              />
+                              <div className="image-overlay"></div>
+                            </div>
+                            <div className="card-content card-content-back">
+                              <h4>{event.title}</h4>
+                              <p className="event-description">
+                                {event.description || 'Keine Beschreibung verfügbar'}
+                              </p>
+                              <div className="event-meta">
+                                <small>{formatDaysUntil(event.daysUntil)}</small>
+                                <small>{new Date(event.date).toLocaleDateString('de-DE', { 
+                                  day: '2-digit', 
+                                  month: 'short',
+                                  year: 'numeric'
+                                })}</small>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))
