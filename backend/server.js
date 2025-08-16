@@ -290,6 +290,117 @@ app.post('/api/relationships', (req, res) => {
     });
 });
 
+// ===== NOTIZEN ROUTEN =====
+
+// Alle Notizen abrufen
+app.get('/api/notes', (req, res) => {
+    const { category, search } = req.query;
+    
+    let query = 'SELECT * FROM notes WHERE 1=1';
+    let params = [];
+    
+    if (category && category !== 'alle') {
+        query += ' AND category = ?';
+        params.push(category);
+    }
+    
+    if (search) {
+        query += ' AND (title LIKE ? OR content LIKE ? OR tags LIKE ?)';
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    
+    query += ' ORDER BY priority DESC, updated_at DESC';
+    
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+// Einzelne Notiz abrufen
+app.get('/api/notes/:id', (req, res) => {
+    const noteId = req.params.id;
+    
+    db.get('SELECT * FROM notes WHERE id = ?', [noteId], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (!row) {
+            return res.status(404).json({ error: 'Notiz nicht gefunden' });
+        }
+        res.json(row);
+    });
+});
+
+// Neue Notiz erstellen
+app.post('/api/notes', (req, res) => {
+    const { title, content, category, priority, is_favorite, tags } = req.body;
+    
+    if (!title || !content) {
+        return res.status(400).json({ error: 'Titel und Inhalt sind erforderlich' });
+    }
+    
+    db.run(`
+        INSERT INTO notes (title, content, category, priority, is_favorite, tags)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `, [title, content, category || 'allgemein', priority || 1, is_favorite || 0, tags || ''], function(err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        res.json({
+            id: this.lastID,
+            title,
+            content,
+            category: category || 'allgemein',
+            priority: priority || 1,
+            is_favorite: is_favorite || 0,
+            tags: tags || ''
+        });
+    });
+});
+
+// Notiz aktualisieren
+app.put('/api/notes/:id', (req, res) => {
+    const noteId = req.params.id;
+    const { title, content, category, priority, is_favorite, tags } = req.body;
+    
+    db.run(`
+        UPDATE notes 
+        SET title = ?, content = ?, category = ?, priority = ?, is_favorite = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    `, [title, content, category, priority, is_favorite, tags, noteId], function(err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Notiz nicht gefunden' });
+        }
+        
+        res.json({ message: 'Notiz erfolgreich aktualisiert' });
+    });
+});
+
+// Notiz löschen
+app.delete('/api/notes/:id', (req, res) => {
+    const noteId = req.params.id;
+    
+    db.run('DELETE FROM notes WHERE id = ?', [noteId], function(err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Notiz nicht gefunden' });
+        }
+        
+        res.json({ message: 'Notiz erfolgreich gelöscht' });
+    });
+});
+
 // Server starten
 app.listen(PORT, () => {
     console.log(`🚀 Backend Server läuft auf Port ${PORT}`);

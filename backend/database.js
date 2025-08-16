@@ -54,6 +54,19 @@ db.serialize(() => {
         FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE,
         FOREIGN KEY (image_id) REFERENCES images (id) ON DELETE CASCADE
     )`);
+
+    // Notizen Tabelle für persönliche Details über Partner
+    db.run(`CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'allgemein',
+        priority INTEGER DEFAULT 1,
+        is_favorite BOOLEAN DEFAULT 0,
+        tags TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
 });
 
 module.exports = db;

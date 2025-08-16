@@ -37,6 +37,18 @@ export interface Relationship {
   updated_at?: string;
 }
 
+export interface Note {
+  id?: number;
+  title: string;
+  content: string;
+  category: string;
+  priority: number;
+  is_favorite: boolean;
+  tags?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 class ApiService {
   // ===== EVENT SERVICES =====
   
@@ -207,6 +219,97 @@ class ApiService {
       return await response.json();
     } catch (error) {
       console.error('Fehler beim Erstellen der Beziehung:', error);
+      throw error;
+    }
+  }
+
+  // ===== NOTES SERVICES =====
+  
+  async getNotes(category?: string, search?: string): Promise<Note[]> {
+    try {
+      let url = `${API_BASE_URL}/notes`;
+      const params = new URLSearchParams();
+      
+      if (category) params.append('category', category);
+      if (search) params.append('search', search);
+      
+      if (params.toString()) url += `?${params.toString()}`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Fehler beim Laden der Notizen:', error);
+      throw error;
+    }
+  }
+
+  async getNoteById(id: number): Promise<Note> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notes/${id}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Fehler beim Laden der Notiz:', error);
+      throw error;
+    }
+  }
+
+  async createNote(note: Omit<Note, 'id' | 'created_at' | 'updated_at'>): Promise<Note> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(note),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Fehler beim Erstellen der Notiz:', error);
+      throw error;
+    }
+  }
+
+  async updateNote(id: number, note: Partial<Note>): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(note),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren der Notiz:', error);
+      throw error;
+    }
+  }
+
+  async deleteNote(id: number): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Löschen der Notiz:', error);
       throw error;
     }
   }

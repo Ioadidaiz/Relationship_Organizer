@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import { apiService, CalendarEvent } from './services/apiService';
+import { apiService, CalendarEvent, Note } from './services/apiService';
 
 function App() {
   const [activeSection, setActiveSection] = useState('startseite');
@@ -24,9 +24,25 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [serverConnected, setServerConnected] = useState(false);
 
-  // Lade Events beim Start
+  // Notizen States
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState('alle');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [newNote, setNewNote] = useState({
+    title: '',
+    content: '',
+    category: 'allgemein',
+    priority: 1,
+    is_favorite: false,
+    tags: ''
+  });
+
+  // Lade Events und Notizen beim Start
   useEffect(() => {
     loadEvents();
+    loadNotes();
     checkServerConnection();
   }, []);
 
@@ -57,6 +73,19 @@ function App() {
       setEvents([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadNotes = async () => {
+    try {
+      const dbNotes = await apiService.getNotes(
+        selectedCategory !== 'alle' ? selectedCategory : undefined,
+        searchQuery || undefined
+      );
+      setNotes(dbNotes);
+    } catch (err) {
+      console.error('Fehler beim Laden der Notizen:', err);
+      setNotes([]);
     }
   };
 
@@ -97,6 +126,74 @@ function App() {
     if (days < 30) return `In ${Math.round(days / 7)} Wochen`;
     return `In ${Math.round(days / 30)} Monat(en)`;
   };
+
+  // ===== NOTIZEN HANDLER =====
+  
+  const handleAddNote = () => {
+    setEditingNote(null);
+    setNewNote({
+      title: '',
+      content: '',
+      category: 'allgemein',
+      priority: 1,
+      is_favorite: false,
+      tags: ''
+    });
+    setShowNoteModal(true);
+  };
+
+  const handleEditNote = (note: Note) => {
+    setEditingNote(note);
+    setNewNote({
+      title: note.title,
+      content: note.content,
+      category: note.category,
+      priority: note.priority,
+      is_favorite: note.is_favorite,
+      tags: note.tags || ''
+    });
+    setShowNoteModal(true);
+  };
+
+  const handleSaveNote = async () => {
+    try {
+      if (editingNote) {
+        await apiService.updateNote(editingNote.id!, newNote);
+      } else {
+        await apiService.createNote(newNote);
+      }
+      await loadNotes();
+      setShowNoteModal(false);
+    } catch (err) {
+      console.error('Fehler beim Speichern der Notiz:', err);
+      setError('Fehler beim Speichern der Notiz');
+    }
+  };
+
+  const handleDeleteNote = async (id: number) => {
+    if (window.confirm('Soll diese Notiz wirklich gelöscht werden?')) {
+      try {
+        await apiService.deleteNote(id);
+        await loadNotes();
+      } catch (err) {
+        console.error('Fehler beim Löschen der Notiz:', err);
+        setError('Fehler beim Löschen der Notiz');
+      }
+    }
+  };
+
+  const categories = [
+    'alle',
+    'allgemein',
+    'essen',
+    'geschenke',
+    'hobbies',
+    'vorlieben',
+    'abneigungen',
+    'wünsche',
+    'erinnerungen',
+    'besonderes'
+  ];
 
   const handleDayClick = (date: string) => {
     setSelectedDate(date);
@@ -701,6 +798,87 @@ function App() {
             </div>
           </div>
         );
+      case 'notizen':
+        return (
+          <div className="notes-view">
+            <div className="notes-header">
+              <div className="notes-controls">
+                <div className="category-filter">
+                  <select 
+                    value={selectedCategory} 
+                    onChange={(e) => {
+                      setSelectedCategory(e.target.value);
+                      // Lade Notizen neu wenn Kategorie geändert wird
+                      setTimeout(() => loadNotes(), 100);
+                    }}
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>
+                        {cat === 'alle' ? 'Alle Kategorien' : 
+                         cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="search-bar">
+                  <input
+                    type="text"
+                    placeholder="Notizen durchsuchen..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && loadNotes()}
+                  />
+                  <button onClick={loadNotes}>🔍</button>
+                </div>
+                <button className="add-note-btn" onClick={handleAddNote}>
+                  📝 Neue Notiz
+                </button>
+              </div>
+            </div>
+
+            <div className="notes-grid">
+              {notes.map(note => (
+                <div key={note.id} className={`note-card ${note.is_favorite ? 'favorite' : ''}`}>
+                  <div className="note-header">
+                    <h3>{note.title}</h3>
+                    <div className="note-actions">
+                      {note.is_favorite && <span className="favorite-icon">⭐</span>}
+                      <span className="priority-badge priority-{note.priority}">
+                        {'!'.repeat(note.priority)}
+                      </span>
+                      <button onClick={() => handleEditNote(note)}>✏️</button>
+                      <button onClick={() => handleDeleteNote(note.id!)}>🗑️</button>
+                    </div>
+                  </div>
+                  <div className="note-content">
+                    <p>{note.content}</p>
+                  </div>
+                  <div className="note-meta">
+                    <span className="category">{note.category}</span>
+                    {note.tags && (
+                      <div className="tags">
+                        {note.tags.split(',').map((tag, i) => (
+                          <span key={i} className="tag">{tag.trim()}</span>
+                        ))}
+                      </div>
+                    )}
+                    <span className="date">
+                      {new Date(note.updated_at || note.created_at!).toLocaleDateString('de-DE')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {notes.length === 0 && (
+                <div className="empty-state">
+                  <h3>Keine Notizen gefunden</h3>
+                  <p>Erstelle deine erste Notiz über deine Partnerin!</p>
+                  <button onClick={handleAddNote}>📝 Erste Notiz erstellen</button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
       default:
         return (
           <div className="content">
@@ -744,6 +922,93 @@ function App() {
         <div className="content-area">
           {renderContent()}
         </div>
+
+        {/* Notizen Modal */}
+        {showNoteModal && (
+          <div className="modal-overlay" onClick={() => setShowNoteModal(false)}>
+            <div className="modal note-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{editingNote ? 'Notiz bearbeiten' : 'Neue Notiz erstellen'}</h2>
+                <button className="close-btn" onClick={() => setShowNoteModal(false)}>✕</button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Titel</label>
+                  <input
+                    type="text"
+                    value={newNote.title}
+                    onChange={(e) => setNewNote({...newNote, title: e.target.value})}
+                    placeholder="Was möchtest du dir merken?"
+                  />
+                </div>
+                
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Kategorie</label>
+                    <select
+                      value={newNote.category}
+                      onChange={(e) => setNewNote({...newNote, category: e.target.value})}
+                    >
+                      {categories.slice(1).map(cat => (
+                        <option key={cat} value={cat}>
+                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Priorität</label>
+                    <select
+                      value={newNote.priority}
+                      onChange={(e) => setNewNote({...newNote, priority: parseInt(e.target.value)})}
+                    >
+                      <option value={1}>Niedrig</option>
+                      <option value={2}>Normal</option>
+                      <option value={3}>Hoch</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Inhalt</label>
+                  <textarea
+                    value={newNote.content}
+                    onChange={(e) => setNewNote({...newNote, content: e.target.value})}
+                    placeholder="Beschreibe hier was sie mag, was sie sich wünscht, etc..."
+                    rows={5}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Tags (mit Komma getrennt)</label>
+                  <input
+                    type="text"
+                    value={newNote.tags}
+                    onChange={(e) => setNewNote({...newNote, tags: e.target.value})}
+                    placeholder="z.B. schokolade, erdbeeren, überraschung"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={newNote.is_favorite}
+                      onChange={(e) => setNewNote({...newNote, is_favorite: e.target.checked})}
+                    />
+                    Als Favorit markieren ⭐
+                  </label>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button onClick={() => setShowNoteModal(false)}>Abbrechen</button>
+                <button className="primary" onClick={handleSaveNote}>
+                  {editingNote ? 'Aktualisieren' : 'Speichern'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
