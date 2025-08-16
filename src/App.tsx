@@ -1,15 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
+import { apiService, CalendarEvent } from './services/apiService';
 
 function App() {
   const [activeSection, setActiveSection] = useState('startseite');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [newEvent, setNewEvent] = useState({ title: '', type: 'anniversary', description: '', recurring: false });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [serverConnected, setServerConnected] = useState(false);
+
+  // Lade Events beim Start
+  useEffect(() => {
+    loadEvents();
+    checkServerConnection();
+  }, []);
+
+  const checkServerConnection = async () => {
+    try {
+      const connected = await apiService.isServerRunning();
+      setServerConnected(connected);
+      if (!connected) {
+        setError('Backend-Server ist nicht erreichbar. Bitte starten Sie den Server mit: npm run backend');
+      } else {
+        setError(null);
+      }
+    } catch (err) {
+      setServerConnected(false);
+      setError('Fehler bei der Verbindung zum Server.');
+    }
+  };
+
+  const loadEvents = async () => {
+    try {
+      setIsLoading(true);
+      const dbEvents = await apiService.getEvents();
+      setEvents(dbEvents);
+      setError(null);
+    } catch (err) {
+      console.error('Fehler beim Laden der Events:', err);
+      // Fallback: Verwende lokale Events wenn Server nicht verfügbar
+      setEvents([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleDayClick = (date: string) => {
     setSelectedDate(date);
@@ -18,47 +58,87 @@ function App() {
     setShowEventModal(true);
   };
 
-  const handleEditEvent = (event: any) => {
+  const handleEditEvent = (event: CalendarEvent) => {
     setEditingEvent(event);
     setSelectedDate(event.date);
     setNewEvent({ 
       title: event.title, 
-      type: event.type, 
-      description: event.description,
-      recurring: event.recurring || false
+      type: 'anniversary',
+      description: event.description || '',
+      recurring: event.is_recurring || false
     });
     setShowEventModal(true);
   };
 
-  const handleDeleteEvent = (eventId: number) => {
-    setEvents(events.filter(event => event.id !== eventId));
+  const handleDeleteEvent = async (eventId: number) => {
+    if (!serverConnected) {
+      // Fallback: Lokale Löschung
+      setEvents(events.filter(event => event.id !== eventId));
+      return;
+    }
+    
+    try {
+      await apiService.deleteEvent(eventId);
+      await loadEvents();
+    } catch (err) {
+      console.error('Fehler beim Löschen des Events:', err);
+      setError('Fehler beim Löschen des Events.');
+    }
   };
 
-  const handleSaveEvent = () => {
-    if (newEvent.title && selectedDate) {
+  const handleSaveEvent = async () => {
+    if (!newEvent.title || !selectedDate) return;
+    
+    if (!serverConnected) {
+      // Fallback: Lokales Speichern
       if (editingEvent) {
-        // Ereignis bearbeiten
         setEvents(events.map(event => 
           event.id === editingEvent.id 
-            ? { ...event, date: selectedDate, title: newEvent.title, type: newEvent.type, description: newEvent.description, recurring: newEvent.recurring }
+            ? { ...event, date: selectedDate, title: newEvent.title, description: newEvent.description, is_recurring: newEvent.recurring }
             : event
         ));
       } else {
-        // Neues Ereignis hinzufügen
-        const event = {
+        const event: CalendarEvent = {
           id: events.length + 1,
           date: selectedDate,
           title: newEvent.title,
-          type: newEvent.type,
           description: newEvent.description,
-          recurring: newEvent.recurring
+          is_recurring: newEvent.recurring,
+          recurrence_type: newEvent.recurring ? 'yearly' : undefined
         };
         setEvents([...events, event]);
       }
-      setNewEvent({ title: '', type: 'anniversary', description: '', recurring: false });
-      setSelectedDate('');
-      setEditingEvent(null);
       setShowEventModal(false);
+      setEditingEvent(null);
+      setNewEvent({ title: '', type: 'anniversary', description: '', recurring: false });
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      const eventData: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'> = {
+        title: newEvent.title,
+        description: newEvent.description,
+        date: selectedDate,
+        is_recurring: newEvent.recurring,
+        recurrence_type: newEvent.recurring ? 'yearly' : undefined
+      };
+
+      if (editingEvent && editingEvent.id) {
+        await apiService.updateEvent(editingEvent.id, eventData);
+      } else {
+        await apiService.createEvent(eventData);
+      }
+
+      await loadEvents();
+      setShowEventModal(false);
+      setEditingEvent(null);
+      setNewEvent({ title: '', type: 'anniversary', description: '', recurring: false });
+    } catch (err) {
+      console.error('Fehler beim Speichern des Events:', err);
+      setError('Fehler beim Speichern des Events.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -85,7 +165,7 @@ function App() {
       if (event.date === date) return true;
       
       // Für wiederkehrende Ereignisse
-      if (event.recurring) {
+      if (event.is_recurring) {
         const eventDate = new Date(event.date);
         const checkDate = new Date(date);
         
@@ -125,7 +205,7 @@ function App() {
       
       let dayClass = 'day';
       if (isToday) dayClass += ' today';
-      if (dayEvents.length > 0) dayClass += ` has-event ${dayEvents[0].type}`;
+      if (dayEvents.length > 0) dayClass += ` has-event anniversary`;
       
       days.push(
         <div 
@@ -136,7 +216,7 @@ function App() {
           {day}
           {dayEvents.map((event, index) => (
             <div key={index} className="event-dot" onClick={(e) => e.stopPropagation()}>
-              <span className="event-title-dot">{event.title}{event.recurring && " 🔄"}</span>
+              <span className="event-title-dot">{event.title}{event.is_recurring && " 🔄"}</span>
               <div className="event-actions-dropdown">
                 <button 
                   className="edit-btn"
@@ -152,11 +232,11 @@ function App() {
                   className="delete-btn"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteEvent(event.id);
+                    if (event.id) handleDeleteEvent(event.id);
                   }}
                   title="Löschen"
                 >
-                  �️
+                  🗑️
                 </button>
               </div>
             </div>
@@ -185,10 +265,24 @@ function App() {
         return (
           <div className="calendar-view">
             <div className="calendar-header">
+              <div className="status-indicators">
+                <div className={`server-status ${serverConnected ? 'connected' : 'disconnected'}`}>
+                  <span className="status-dot"></span>
+                  {serverConnected ? 'Datenbank verbunden' : 'Offline-Modus'}
+                </div>
+                {isLoading && <div className="loading-indicator">💾 Speichert...</div>}
+              </div>
               <button className="add-event-btn" onClick={() => setShowEventModal(true)}>
                 + Ereignis hinzufügen
               </button>
             </div>
+            
+            {error && (
+              <div className="error-banner">
+                ⚠️ {error}
+                <button onClick={checkServerConnection} className="retry-btn">Erneut versuchen</button>
+              </div>
+            )}
             
             <div className="calendar-container">
               <div className="calendar-main">
