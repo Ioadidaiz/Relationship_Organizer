@@ -60,26 +60,32 @@ function App() {
     }
   };
 
-  // Hole die nächsten 5 anstehenden Termine
+  // Hole die nächsten 4 anstehenden Termine
   const getUpcomingEvents = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    return events
+    const upcomingEvents = events
       .filter(event => {
         const eventDate = new Date(event.date);
         eventDate.setHours(0, 0, 0, 0);
         return eventDate >= today;
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(0, 5)
-      .map(event => ({
-        ...event,
-        daysUntil: Math.ceil((new Date(event.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
-        displayImage: event.images && event.images.length > 0 
-          ? `/uploads/${event.images[0].filename}` 
-          : `/image${Math.floor(Math.random() * 4) + 1}.jpg` // Zufälliges Standardbild
-      }));
+      .slice(0, 4) // Nur 4 Events anzeigen
+      .map(event => {
+        console.log('Event:', event.title, 'Images:', event.images); // Debug-Output
+        return {
+          ...event,
+          daysUntil: Math.ceil((new Date(event.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+          displayImage: event.images && event.images.length > 0 
+            ? `http://localhost:5000/uploads/${event.images[0].filename}` // Vollständiger Backend-Pfad
+            : `/image${Math.floor(Math.random() * 4) + 1}.jpg` // Zufälliges Standardbild
+        };
+      });
+    
+    console.log('Upcoming events:', upcomingEvents); // Debug-Output
+    return upcomingEvents;
   };
 
   // Formatiere die Tage bis zum Event
