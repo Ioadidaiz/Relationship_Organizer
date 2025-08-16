@@ -40,7 +40,8 @@ const upload = multer({
         }
     },
     limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB Limit
+        fileSize: 50 * 1024 * 1024, // 50MB Limit erhöht
+        files: 1 // Nur eine Datei pro Request
     }
 });
 
@@ -170,16 +171,74 @@ app.put('/api/events/:id', (req, res) => {
 app.delete('/api/events/:id', (req, res) => {
     const eventId = req.params.id;
     
-    db.run('DELETE FROM events WHERE id = ?', [eventId], function(err) {
+    // Erst das Event mit zugehörigen Bildern abrufen
+    db.get('SELECT * FROM events WHERE id = ?', [eventId], (err, event) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
         
-        if (this.changes === 0) {
+        if (!event) {
             return res.status(404).json({ error: 'Event nicht gefunden' });
         }
         
-        res.json({ message: 'Event erfolgreich gelöscht' });
+        // Zugehörige Bilder über event_images Tabelle finden
+        db.all(`
+            SELECT i.filename, i.path 
+            FROM images i 
+            JOIN event_images ei ON i.id = ei.image_id 
+            WHERE ei.event_id = ?
+        `, [eventId], (err, images) => {
+            if (err) {
+                console.warn('Warnung: Fehler beim Abrufen der Event-Bilder:', err.message);
+            }
+            
+            // Event aus Datenbank löschen
+            db.run('DELETE FROM events WHERE id = ?', [eventId], function(err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                
+                // Event_Images Verknüpfungen löschen (CASCADE sollte das automatisch machen)
+                db.run('DELETE FROM event_images WHERE event_id = ?', [eventId], (err) => {
+                    if (err) {
+                        console.warn('Warnung: Fehler beim Löschen der Event-Image-Verknüpfungen:', err.message);
+                    }
+                });
+                
+                // Bild-Dateien vom Dateisystem löschen
+                if (images && images.length > 0) {
+                    images.forEach(image => {
+                        // Korrigierter Pfad - Bilder sind in backend/uploads
+                        const imagePath = path.join(__dirname, 'uploads', image.filename);
+                        console.log('Versuche Event-Bild zu löschen:', imagePath);
+                        
+                        fs.unlink(imagePath, (unlinkErr) => {
+                            if (unlinkErr) {
+                                console.warn('Warnung: Event-Bild konnte nicht gelöscht werden:', unlinkErr.message);
+                                console.warn('Pfad war:', imagePath);
+                            } else {
+                                console.log('✅ Event-Bild erfolgreich gelöscht:', image.path);
+                            }
+                        });
+                    });
+                    
+                    // Optional: Auch die Bild-Einträge aus der images Tabelle löschen
+                    // (nur wenn sie nicht von anderen Events verwendet werden)
+                    const imageIds = images.map(img => img.id || 'NULL').join(',');
+                    if (imageIds && imageIds !== 'NULL') {
+                        db.run(`DELETE FROM images WHERE id IN (${imageIds})`, (err) => {
+                            if (err) {
+                                console.warn('Warnung: Fehler beim Löschen der Bild-Datensätze:', err.message);
+                            } else {
+                                console.log('✅ Event-Bild-Datensätze aus DB gelöscht');
+                            }
+                        });
+                    }
+                }
+                
+                res.json({ message: 'Event und zugehörige Bilder erfolgreich gelöscht' });
+            });
+        });
     });
 });
 
@@ -334,53 +393,105 @@ app.get('/api/notes/:id', (req, res) => {
     });
 });
 
-// Neue Notiz erstellen
+// Neue Notiz erstellen (mit optionalem Bild)
 app.post('/api/notes', (req, res) => {
-    const { title, content, category, priority, is_favorite, tags } = req.body;
-    
-    if (!title || !content) {
-        return res.status(400).json({ error: 'Titel und Inhalt sind erforderlich' });
-    }
-    
-    db.run(`
-        INSERT INTO notes (title, content, category, priority, is_favorite, tags)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `, [title, content, category || 'allgemein', priority || 1, is_favorite || 0, tags || ''], function(err) {
+    upload.single('image')(req, res, (err) => {
         if (err) {
-            return res.status(500).json({ error: err.message });
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: 'Datei ist zu groß. Maximal 50MB erlaubt.' });
+                }
+                if (err.code === 'LIMIT_FILE_COUNT') {
+                    return res.status(400).json({ error: 'Zu viele Dateien. Nur eine Datei erlaubt.' });
+                }
+                return res.status(400).json({ error: `Upload-Fehler: ${err.message}` });
+            }
+            return res.status(400).json({ error: err.message });
         }
+
+        const { title, content, category, priority, is_favorite, tags } = req.body;
         
-        res.json({
-            id: this.lastID,
-            title,
-            content,
-            category: category || 'allgemein',
-            priority: priority || 1,
-            is_favorite: is_favorite || 0,
-            tags: tags || ''
+        if (!title || !content) {
+            return res.status(400).json({ error: 'Titel und Inhalt sind erforderlich' });
+        }
+
+        const image_path = req.file ? `/uploads/${req.file.filename}` : null;
+        
+        db.run(`
+            INSERT INTO notes (title, content, category, priority, is_favorite, tags, image_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [title, content, category || 'allgemein', priority || 1, is_favorite || 0, tags || '', image_path], function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            res.json({
+                id: this.lastID,
+                title,
+                content,
+                category: category || 'allgemein',
+                priority: priority || 1,
+                is_favorite: is_favorite || 0,
+                tags: tags || '',
+                image_path
+            });
         });
     });
 });
 
 // Notiz aktualisieren
 app.put('/api/notes/:id', (req, res) => {
-    const noteId = req.params.id;
-    const { title, content, category, priority, is_favorite, tags } = req.body;
-    
-    db.run(`
-        UPDATE notes 
-        SET title = ?, content = ?, category = ?, priority = ?, is_favorite = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    `, [title, content, category, priority, is_favorite, tags, noteId], function(err) {
+    upload.single('image')(req, res, (err) => {
         if (err) {
-            return res.status(500).json({ error: err.message });
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: 'Datei ist zu groß. Maximal 50MB erlaubt.' });
+                }
+                if (err.code === 'LIMIT_FILE_COUNT') {
+                    return res.status(400).json({ error: 'Zu viele Dateien. Nur eine Datei erlaubt.' });
+                }
+                return res.status(400).json({ error: `Upload-Fehler: ${err.message}` });
+            }
+            return res.status(400).json({ error: err.message });
+        }
+
+        const noteId = req.params.id;
+        const { title, content, category, priority, is_favorite, tags } = req.body;
+        
+        // Wenn ein neues Bild hochgeladen wurde
+        const image_path = req.file ? `/uploads/${req.file.filename}` : undefined;
+        
+        let query, params;
+        
+        if (image_path) {
+            // Mit Bild-Update
+            query = `
+                UPDATE notes 
+                SET title = ?, content = ?, category = ?, priority = ?, is_favorite = ?, tags = ?, image_path = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `;
+            params = [title, content, category, priority, is_favorite, tags, image_path, noteId];
+        } else {
+            // Ohne Bild-Update (behält vorhandenes Bild)
+            query = `
+                UPDATE notes 
+                SET title = ?, content = ?, category = ?, priority = ?, is_favorite = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `;
+            params = [title, content, category, priority, is_favorite, tags, noteId];
         }
         
-        if (this.changes === 0) {
-            return res.status(404).json({ error: 'Notiz nicht gefunden' });
-        }
-        
-        res.json({ message: 'Notiz erfolgreich aktualisiert' });
+        db.run(query, params, function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Notiz nicht gefunden' });
+            }
+            
+            res.json({ message: 'Notiz erfolgreich aktualisiert' });
+        });
     });
 });
 
@@ -388,16 +499,40 @@ app.put('/api/notes/:id', (req, res) => {
 app.delete('/api/notes/:id', (req, res) => {
     const noteId = req.params.id;
     
-    db.run('DELETE FROM notes WHERE id = ?', [noteId], function(err) {
+    // Erst die Notiz mit Bild-Info abrufen
+    db.get('SELECT image_path FROM notes WHERE id = ?', [noteId], (err, note) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
         
-        if (this.changes === 0) {
+        if (!note) {
             return res.status(404).json({ error: 'Notiz nicht gefunden' });
         }
         
-        res.json({ message: 'Notiz erfolgreich gelöscht' });
+        // Notiz aus Datenbank löschen
+        db.run('DELETE FROM notes WHERE id = ?', [noteId], function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            // Wenn ein Bild vorhanden ist, auch das Bild löschen
+            if (note.image_path) {
+                // Bild-Pfad korrekt erstellen - Bilder sind in backend/uploads, nicht public/uploads
+                const imagePath = path.join(__dirname, 'uploads', path.basename(note.image_path));
+                console.log('Versuche Bild zu löschen:', imagePath);
+                
+                fs.unlink(imagePath, (unlinkErr) => {
+                    if (unlinkErr) {
+                        console.warn('Warnung: Bild konnte nicht gelöscht werden:', unlinkErr.message);
+                        console.warn('Pfad war:', imagePath);
+                    } else {
+                        console.log('✅ Bild erfolgreich gelöscht:', note.image_path);
+                    }
+                });
+            }
+            
+            res.json({ message: 'Notiz und zugehöriges Bild erfolgreich gelöscht' });
+        });
     });
 });
 

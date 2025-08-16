@@ -64,9 +64,17 @@ db.serialize(() => {
         priority INTEGER DEFAULT 1,
         is_favorite BOOLEAN DEFAULT 0,
         tags TEXT,
+        image_path TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    // Füge image_path Spalte hinzu falls sie nicht existiert (für bestehende Datenbanken)
+    db.run(`ALTER TABLE notes ADD COLUMN image_path TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error('Fehler beim Hinzufügen der image_path Spalte:', err);
+        }
+    });
 });
 
 module.exports = db;

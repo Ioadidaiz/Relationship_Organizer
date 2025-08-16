@@ -30,6 +30,7 @@ function App() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('alle');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirmNote, setDeleteConfirmNote] = useState<number | null>(null);
   const [newNote, setNewNote] = useState({
     title: '',
     content: '',
@@ -38,6 +39,7 @@ function App() {
     is_favorite: false,
     tags: ''
   });
+  const [noteImage, setNoteImage] = useState<File | null>(null);
 
   // Lade Events und Notizen beim Start
   useEffect(() => {
@@ -139,10 +141,12 @@ function App() {
       is_favorite: false,
       tags: ''
     });
+    setNoteImage(null);
     setShowNoteModal(true);
   };
 
   const handleEditNote = (note: Note) => {
+    console.log('Edit note clicked:', note.id);
     setEditingNote(note);
     setNewNote({
       title: note.title,
@@ -152,34 +156,108 @@ function App() {
       is_favorite: note.is_favorite,
       tags: note.tags || ''
     });
+    setNoteImage(null); // Reset image for editing
     setShowNoteModal(true);
+  };
+
+  // Bild-Komprimierung vor Upload (kleinere Vorschaubilder)
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      const img = new Image();
+      
+      img.onload = () => {
+        // Kleine Vorschaubilder - maximale Größe für Karten
+        const maxWidth = 300;
+        const maxHeight = 300;
+        let { width, height } = img;
+        
+        // Proportional skalieren
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Bild zeichnen und stark komprimieren für kleine Dateigröße
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file); // Fallback bei Fehlern
+          }
+        }, 'image/jpeg', 0.6); // 60% Qualität für kleinere Dateien
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
   };
 
   const handleSaveNote = async () => {
     try {
+      let imageToUpload = noteImage;
+      
+      // Komprimiere ALLE Bilder automatisch für kleinere Vorschaubilder
+      if (noteImage) {
+        setIsLoading(true);
+        imageToUpload = await compressImage(noteImage);
+        console.log(`Bild komprimiert: ${(noteImage.size / 1024).toFixed(1)}KB → ${(imageToUpload.size / 1024).toFixed(1)}KB`);
+      }
+      
       if (editingNote) {
-        await apiService.updateNote(editingNote.id!, newNote);
+        await apiService.updateNote(editingNote.id!, newNote, imageToUpload || undefined);
       } else {
-        await apiService.createNote(newNote);
+        await apiService.createNote(newNote, imageToUpload || undefined);
       }
       await loadNotes();
       setShowNoteModal(false);
+      setNoteImage(null); // Reset image
+      setIsLoading(false);
     } catch (err) {
       console.error('Fehler beim Speichern der Notiz:', err);
       setError('Fehler beim Speichern der Notiz');
+      setIsLoading(false);
     }
   };
 
   const handleDeleteNote = async (id: number) => {
-    if (window.confirm('Soll diese Notiz wirklich gelöscht werden?')) {
-      try {
-        await apiService.deleteNote(id);
-        await loadNotes();
-      } catch (err) {
-        console.error('Fehler beim Löschen der Notiz:', err);
-        setError('Fehler beim Löschen der Notiz');
-      }
+    console.log('Delete note clicked:', id);
+    setDeleteConfirmNote(id);
+  };
+
+  const confirmDeleteNote = async (id: number) => {
+    try {
+      setIsLoading(true);
+      await apiService.deleteNote(id);
+      await loadNotes();
+      setDeleteConfirmNote(null);
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Fehler beim Löschen der Notiz:', err);
+      setError('Fehler beim Löschen der Notiz');
+      setDeleteConfirmNote(null);
+      setIsLoading(false);
     }
+  };
+
+  const cancelDeleteNote = () => {
+    setDeleteConfirmNote(null);
   };
 
   const categories = [
@@ -799,83 +877,254 @@ function App() {
           </div>
         );
       case 'notizen':
+        const categories = ['essen', 'geschenke', 'hobbies', 'vorlieben', 'abneigungen', 'wünsche'];
+        
+        const getCategoryNotes = (category: string) => {
+          return notes.filter(note => note.category === category);
+        };
+
+        const getCategoryImage = (category: string) => {
+          const images: { [key: string]: string } = {
+            'essen': '/essen.jpg',
+            'geschenke': '/geschenke.jpg', 
+            'hobbies': '/hobbies.jpg',
+            'vorlieben': '/vorlieben.jpg',
+            'abneigungen': '/abneigungen.jpg',
+            'wünsche': '/wünsche.jpg'
+          };
+          return images[category] || '/image1.jpg';
+        };
+
+        const getNoteImage = (note: Note, category: string) => {
+          // Verwende das spezifische Notiz-Bild falls vorhanden, sonst Kategorie-Bild
+          if (note.image_path) {
+            return `http://localhost:5000${note.image_path}`;
+          }
+          return getCategoryImage(category);
+        };
+
+        const getLatestNotes = (categoryNotes: Note[], count: number = 2) => {
+          return categoryNotes
+            .sort((a, b) => new Date(b.updated_at || b.created_at!).getTime() - new Date(a.updated_at || a.created_at!).getTime())
+            .slice(0, count);
+        };
+
         return (
-          <div className="notes-view">
-            <div className="notes-header">
-              <div className="notes-controls">
-                <div className="category-filter">
-                  <select 
-                    value={selectedCategory} 
-                    onChange={(e) => {
-                      setSelectedCategory(e.target.value);
-                      // Lade Notizen neu wenn Kategorie geändert wird
-                      setTimeout(() => loadNotes(), 100);
-                    }}
-                  >
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>
-                        {cat === 'alle' ? 'Alle Kategorien' : 
-                         cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="search-bar">
-                  <input
-                    type="text"
-                    placeholder="Notizen durchsuchen..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && loadNotes()}
-                  />
-                  <button onClick={loadNotes}>🔍</button>
-                </div>
-                <button className="add-note-btn" onClick={handleAddNote}>
-                  📝 Neue Notiz
-                </button>
+          <div className="dashboard">
+            <div className="hero-section">
+              <h1>Meine Notizen</h1>
+              <div className="hero-card">
+                <h3>Persönliche Details über deine Partnerin</h3>
+                <p>Sammle wichtige Informationen, um ihr noch mehr Freude zu bereiten!</p>
               </div>
             </div>
+            
+            <div className="content-rails">
+              {categories.map(category => {
+                const categoryNotes = getCategoryNotes(category);
+                const latestNotes = getLatestNotes(categoryNotes);
+                
+                return (
+                  <div key={category} className="rail">
+                    <h2>
+                      {category.charAt(0).toUpperCase() + category.slice(1)} 
+                      <span className="notes-count">({categoryNotes.length})</span>
+                    </h2>
+                    <div className="rail-items">
+                      {/* Kategorie-Karte zum Hinzufügen */}
+                      <div className="rail-card flip-card" onClick={() => {
+                        setNewNote({
+                          title: '',
+                          content: '',
+                          category: category,
+                          priority: 1,
+                          is_favorite: false,
+                          tags: ''
+                        });
+                        setEditingNote(null);
+                        setShowNoteModal(true);
+                      }}>
+                        <div className="flip-card-inner">
+                          <div className="flip-card-front">
+                            <div className="card-image">
+                              <img 
+                                src={getCategoryImage(category)} 
+                                alt={category}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = '/image1.jpg';
+                                }}
+                              />
+                            </div>
+                            <div className="card-content">
+                              <h4>+ {category.charAt(0).toUpperCase() + category.slice(1)}</h4>
+                              <p>{categoryNotes.length === 0 ? 'Neue Notiz hinzufügen' : `${categoryNotes.length} ${categoryNotes.length === 1 ? 'Notiz' : 'Notizen'}`}</p>
+                              <small>Klicken zum Hinzufügen</small>
+                            </div>
+                          </div>
+                          <div className="flip-card-back">
+                            <div className="card-image">
+                              <img 
+                                src={getCategoryImage(category)} 
+                                alt={category}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = '/image1.jpg';
+                                }}
+                              />
+                              <div className="image-overlay"></div>
+                            </div>
+                            <div className="card-content card-content-back">
+                              <h4>+ Hinzufügen</h4>
+                              <p className="event-description">
+                                Neue {category} Notiz erstellen
+                              </p>
+                              <div className="event-meta">
+                                <small>{categoryNotes.length} vorhanden</small>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-            <div className="notes-grid">
-              {notes.map(note => (
-                <div key={note.id} className={`note-card ${note.is_favorite ? 'favorite' : ''}`}>
-                  <div className="note-header">
-                    <h3>{note.title}</h3>
-                    <div className="note-actions">
-                      {note.is_favorite && <span className="favorite-icon">⭐</span>}
-                      <span className="priority-badge priority-{note.priority}">
-                        {'!'.repeat(note.priority)}
-                      </span>
-                      <button onClick={() => handleEditNote(note)}>✏️</button>
-                      <button onClick={() => handleDeleteNote(note.id!)}>🗑️</button>
+                      {/* Letzte Notizen dieser Kategorie */}
+                      {latestNotes.map((note, index) => (
+                        <div key={note.id} className="rail-card flip-card note-card-with-actions">
+                          <div className="flip-card-inner">
+                            <div className="flip-card-front">
+                              <div className="card-image">
+                                <img 
+                                  src={getNoteImage(note, category)} 
+                                  alt={note.title}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/image1.jpg';
+                                  }}
+                                />
+                              </div>
+                              <div className="card-content">
+                                <h4>{note.title}</h4>
+                                <p>{note.content.substring(0, 50)}{note.content.length > 50 ? '...' : ''}</p>
+                                <small>
+                                  {new Date(note.updated_at || note.created_at!).toLocaleDateString('de-DE', { 
+                                    day: '2-digit', 
+                                    month: 'short'
+                                  })}
+                                  {note.is_favorite && ' ⭐'}
+                                </small>
+                              </div>
+                              {/* Action Buttons */}
+                              <div className="card-actions">
+                                <button 
+                                  className="action-btn edit-btn"
+                                  onClick={(e) => {
+                                    console.log('Edit button clicked for note:', note.id);
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleEditNote(note);
+                                  }}
+                                  title="Bearbeiten"
+                                >
+                                  ✏️
+                                </button>
+                                <button 
+                                  className="action-btn delete-btn"
+                                  onClick={(e) => {
+                                    console.log('Delete button clicked for note:', note.id);
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDeleteNote(note.id!);
+                                  }}
+                                  title="Löschen"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flip-card-back">
+                              <div className="card-image">
+                                <img 
+                                  src={getNoteImage(note, category)} 
+                                  alt={note.title}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/image1.jpg';
+                                  }}
+                                />
+                                <div className="image-overlay"></div>
+                              </div>
+                              <div className="card-content card-content-back">
+                                <h4>{note.title}</h4>
+                                <p className="event-description">
+                                  {note.content}
+                                </p>
+                                <div className="event-meta">
+                                  <small>
+                                    {new Date(note.updated_at || note.created_at!).toLocaleDateString('de-DE', { 
+                                      day: '2-digit', 
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })}
+                                  </small>
+                                  {note.tags && <small>Tags: {note.tags}</small>}
+                                  {note.is_favorite && <small>⭐ Favorit</small>}
+                                </div>
+                              </div>
+                              {/* Action Buttons auch auf Rückseite */}
+                              <div className="card-actions card-actions-back">
+                                <button 
+                                  className="action-btn edit-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditNote(note);
+                                  }}
+                                  title="Bearbeiten"
+                                >
+                                  ✏️
+                                </button>
+                                <button 
+                                  className="action-btn delete-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteNote(note.id!);
+                                  }}
+                                  title="Löschen"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* "Alle anzeigen" Karte falls mehr als 2 Notizen */}
+                      {categoryNotes.length > 2 && (
+                        <div className="rail-card show-all-card" onClick={() => {
+                          setSelectedCategory(category);
+                          // Hier könntest du zu einer Detail-Ansicht wechseln
+                        }}>
+                          <div className="card-image">
+                            <img 
+                              src={getCategoryImage(category)} 
+                              alt={`Alle ${category}`}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/image1.jpg';
+                              }}
+                            />
+                          </div>
+                          <div className="card-content">
+                            <h4>Alle anzeigen</h4>
+                            <p>{categoryNotes.length - 2} weitere {category} Notizen</p>
+                            <small>Klicken für Details</small>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="note-content">
-                    <p>{note.content}</p>
-                  </div>
-                  <div className="note-meta">
-                    <span className="category">{note.category}</span>
-                    {note.tags && (
-                      <div className="tags">
-                        {note.tags.split(',').map((tag, i) => (
-                          <span key={i} className="tag">{tag.trim()}</span>
-                        ))}
-                      </div>
-                    )}
-                    <span className="date">
-                      {new Date(note.updated_at || note.created_at!).toLocaleDateString('de-DE')}
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              {notes.length === 0 && (
-                <div className="empty-state">
-                  <h3>Keine Notizen gefunden</h3>
-                  <p>Erstelle deine erste Notiz über deine Partnerin!</p>
-                  <button onClick={handleAddNote}>📝 Erste Notiz erstellen</button>
-                </div>
-              )}
+                );
+              })}
             </div>
           </div>
         );
@@ -990,6 +1239,54 @@ function App() {
                 </div>
 
                 <div className="form-group">
+                  <label>Bild (optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Datei-Größe prüfen (50MB Limit)
+                        if (file.size > 50 * 1024 * 1024) {
+                          setError('Datei ist zu groß. Maximal 50MB erlaubt.');
+                          return;
+                        }
+                        setNoteImage(file);
+                        setError(null); // Clear previous errors
+                      } else {
+                        setNoteImage(null);
+                      }
+                    }}
+                  />
+                  <small style={{ color: '#888', fontSize: '0.8rem' }}>
+                    Unterstützte Formate: JPG, PNG, GIF. Max. 50MB.
+                    {noteImage && ' (Wird automatisch zu 300x300px komprimiert)'}
+                  </small>
+                  {noteImage && (
+                    <div className="image-preview">
+                      <img 
+                        src={URL.createObjectURL(noteImage)} 
+                        alt="Vorschau" 
+                        style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '4px', marginTop: '10px' }}
+                      />
+                      <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '5px' }}>
+                        {noteImage.name} ({(noteImage.size / 1024 / 1024).toFixed(2)} MB)
+                      </div>
+                    </div>
+                  )}
+                  {editingNote?.image_path && !noteImage && (
+                    <div className="current-image">
+                      <label>Aktuelles Bild:</label>
+                      <img 
+                        src={`http://localhost:5000${editingNote.image_path}`} 
+                        alt="Aktuelles Bild" 
+                        style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '4px', marginTop: '10px' }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="form-group">
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
@@ -1004,6 +1301,27 @@ function App() {
                 <button onClick={() => setShowNoteModal(false)}>Abbrechen</button>
                 <button className="primary" onClick={handleSaveNote}>
                   {editingNote ? 'Aktualisieren' : 'Speichern'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        {deleteConfirmNote && (
+          <div className="modal-overlay">
+            <div className="modal delete-modal">
+              <div className="modal-header">
+                <h3>Notiz löschen</h3>
+              </div>
+              <div className="modal-body">
+                <p>Soll diese Notiz wirklich gelöscht werden?</p>
+                <p className="delete-warning">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+              </div>
+              <div className="modal-footer">
+                <button onClick={cancelDeleteNote}>Abbrechen</button>
+                <button className="danger" onClick={() => confirmDeleteNote(deleteConfirmNote)}>
+                  Löschen
                 </button>
               </div>
             </div>

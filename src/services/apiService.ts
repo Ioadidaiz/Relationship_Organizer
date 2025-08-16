@@ -45,6 +45,7 @@ export interface Note {
   priority: number;
   is_favorite: boolean;
   tags?: string;
+  image_path?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -259,14 +260,20 @@ class ApiService {
     }
   }
 
-  async createNote(note: Omit<Note, 'id' | 'created_at' | 'updated_at'>): Promise<Note> {
+  async createNote(note: Omit<Note, 'id' | 'created_at' | 'updated_at'>, image?: File): Promise<Note> {
     try {
+      const formData = new FormData();
+      formData.append('title', note.title);
+      formData.append('content', note.content);
+      formData.append('category', note.category);
+      formData.append('priority', note.priority.toString());
+      formData.append('is_favorite', note.is_favorite.toString());
+      if (note.tags) formData.append('tags', note.tags);
+      if (image) formData.append('image', image);
+
       const response = await fetch(`${API_BASE_URL}/notes`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(note),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -280,14 +287,20 @@ class ApiService {
     }
   }
 
-  async updateNote(id: number, note: Partial<Note>): Promise<void> {
+  async updateNote(id: number, note: Partial<Note>, image?: File): Promise<void> {
     try {
+      const formData = new FormData();
+      if (note.title) formData.append('title', note.title);
+      if (note.content) formData.append('content', note.content);
+      if (note.category) formData.append('category', note.category);
+      if (note.priority !== undefined) formData.append('priority', note.priority.toString());
+      if (note.is_favorite !== undefined) formData.append('is_favorite', note.is_favorite.toString());
+      if (note.tags !== undefined) formData.append('tags', note.tags || '');
+      if (image) formData.append('image', image);
+
       const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(note),
+        body: formData,
       });
 
       if (!response.ok) {
