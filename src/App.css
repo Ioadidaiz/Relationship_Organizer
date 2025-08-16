@@ -276,7 +276,7 @@
   background: #999;
 }
 
-/* Flip Card Styles für anstehende Termine - Performance Optimiert */
+/* Flip Card Styles - KOMPLETT NEUER ANSATZ */
 .rail-card.flip-card {
   min-width: 280px;
   height: 320px;
@@ -284,22 +284,20 @@
   perspective: 1000px;
   border-radius: 8px;
   cursor: pointer;
-  will-change: transform; /* GPU-Beschleunigung */
+  will-change: transform;
 }
 
 .flip-card-inner {
   position: relative;
   width: 100%;
   height: 100%;
-  text-align: center;
-  transition: transform 0.4s ease-in-out; /* Schneller und smoother */
+  transition: transform 0.4s ease-in-out;
   transform-style: preserve-3d;
   border-radius: 8px;
-  will-change: transform; /* GPU-Beschleunigung */
 }
 
 .flip-card:hover .flip-card-inner {
-  transform: rotateY(180deg);
+  transform: rotateY(-180deg); /* Negative Rotation für korrekten Text */
 }
 
 .flip-card-front, .flip-card-back {
@@ -313,8 +311,12 @@
   transform: translateZ(0); /* Hardware-Beschleunigung */
 }
 
+.flip-card-front {
+  z-index: 2; /* Vorderseite über Rückseite */
+}
+
 .flip-card-back {
-  transform: rotateY(180deg) scaleX(-1); /* Korrigierte Rotation + Text-Korrektur */
+  transform: rotateY(180deg); /* Normale 180deg Rotation */
 }
 
 /* Standard rail-card (für nicht-flip Karten) */
@@ -403,7 +405,7 @@
   font-weight: 400;
 }
 
-/* Spezielle Styles für die Rückseite - Performance Optimiert */
+/* Rückseite Content - OHNE Spiegelung */
 .card-content-back {
   position: absolute;
   top: 0;
@@ -416,13 +418,15 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.1);
   z-index: 4;
-  will-change: transform; /* GPU-Beschleunigung */
+  will-change: transform;
+  text-align: center; /* Zentrierter Text */
 }
 
 .card-content-back h4 {
   font-size: 18px;
   margin-bottom: 12px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  color: #ffffff;
 }
 
 .event-description {
