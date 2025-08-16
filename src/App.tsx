@@ -60,6 +60,38 @@ function App() {
     }
   };
 
+  // Hole die nächsten 5 anstehenden Termine
+  const getUpcomingEvents = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return events
+      .filter(event => {
+        const eventDate = new Date(event.date);
+        eventDate.setHours(0, 0, 0, 0);
+        return eventDate >= today;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 5)
+      .map(event => ({
+        ...event,
+        daysUntil: Math.ceil((new Date(event.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+        displayImage: event.images && event.images.length > 0 
+          ? `/uploads/${event.images[0].filename}` 
+          : `/image${Math.floor(Math.random() * 4) + 1}.jpg` // Zufälliges Standardbild
+      }));
+  };
+
+  // Formatiere die Tage bis zum Event
+  const formatDaysUntil = (days: number) => {
+    if (days === 0) return 'Heute';
+    if (days === 1) return 'Morgen';
+    if (days < 7) return `In ${days} Tagen`;
+    if (days < 14) return `In ${Math.round(days / 7)} Woche`;
+    if (days < 30) return `In ${Math.round(days / 7)} Wochen`;
+    return `In ${Math.round(days / 30)} Monat(en)`;
+  };
+
   const handleDayClick = (date: string) => {
     setSelectedDate(date);
     setEditingEvent(null);
@@ -547,24 +579,41 @@ function App() {
               <div className="rail">
                 <h2>Anstehende Anlässe</h2>
                 <div className="rail-items">
-                  <div className="rail-card">
-                    <div className="card-image">
-                      <img src="/image1.jpg" alt="Jahrestag" />
+                  {getUpcomingEvents().length > 0 ? (
+                    getUpcomingEvents().map((event, index) => (
+                      <div key={event.id || index} className="rail-card" onClick={() => handleEditEvent(event)}>
+                        <div className="card-image">
+                          <img 
+                            src={event.displayImage} 
+                            alt={event.title}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/image1.jpg'; // Fallback wenn Bild nicht lädt
+                            }}
+                          />
+                        </div>
+                        <div className="card-content">
+                          <h4>{event.title}</h4>
+                          <p>{formatDaysUntil(event.daysUntil)}</p>
+                          <small>{new Date(event.date).toLocaleDateString('de-DE', { 
+                            day: '2-digit', 
+                            month: 'short',
+                            year: 'numeric'
+                          })}</small>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rail-card empty-state">
+                      <div className="card-image">
+                        <img src="/image1.jpg" alt="Keine Termine" />
+                      </div>
+                      <div className="card-content">
+                        <h4>Keine anstehenden Termine</h4>
+                        <p>Erstelle deinen ersten Termin im Kalender!</p>
+                      </div>
                     </div>
-                    <div className="card-content">
-                      <h4>Jahrestag</h4>
-                      <p>In 12 Tagen</p>
-                    </div>
-                  </div>
-                  <div className="rail-card">
-                    <div className="card-image">
-                      <img src="/image2.jpg" alt="Geburtstag" />
-                    </div>
-                    <div className="card-content">
-                      <h4>Geburtstag</h4>
-                      <p>In 3 Wochen</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 

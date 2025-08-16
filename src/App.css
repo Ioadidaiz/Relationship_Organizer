@@ -331,6 +331,30 @@
 }
 
 .card-content p {
+  color: #b3b3b3;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.card-content small {
+  color: #666;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* Anstehende Termine spezifische Styles */
+.rail-card.empty-state {
+  opacity: 0.7;
+}
+
+.rail-card.empty-state:hover {
+  transform: none;
+  box-shadow: none;
+  cursor: default;
+}
+
+.card-content p {
   font-size: 14px;
   color: #999;
   line-height: 1.4;
