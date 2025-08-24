@@ -1128,22 +1128,21 @@ function App() {
 
   return (
     <div className="app">
-      <div className="sidebar">
-        <nav className="navigation">
+      <div className="main-content">        
+        {/* Top Navigation */}
+        <div className="top-navigation">
           {menuItems.map(item => (
             <button
               key={item.id}
-              className={`nav-item ${activeSection === item.id ? 'active' : ''}`}
+              className={`top-nav-item ${activeSection === item.id ? 'active' : ''}`}
               onClick={() => setActiveSection(item.id)}
             >
-              <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
+              <span className="top-nav-icon">{item.icon}</span>
+              <span className="top-nav-label">{item.label}</span>
             </button>
           ))}
-        </nav>
-      </div>
-
-      <div className="main-content">        
+        </div>
+        
         <div className="content-area">
           {/* Panorama Header - nur für Startseite, am Anfang des Contents */}
           {activeSection === 'startseite' && (
