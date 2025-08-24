@@ -29,7 +29,6 @@ function App() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('alle');
-  const [searchQuery, setSearchQuery] = useState('');
   const [deleteConfirmNote, setDeleteConfirmNote] = useState<number | null>(null);
   const [newNote, setNewNote] = useState({
     title: '',
@@ -80,10 +79,7 @@ function App() {
 
   const loadNotes = async () => {
     try {
-      const dbNotes = await apiService.getNotes(
-        selectedCategory !== 'alle' ? selectedCategory : undefined,
-        searchQuery || undefined
-      );
+      const dbNotes = await apiService.getNotes();
       setNotes(dbNotes);
     } catch (err) {
       console.error('Fehler beim Laden der Notizen:', err);
@@ -1158,16 +1154,7 @@ function App() {
         </nav>
       </div>
 
-      <div className="main-content">
-        <div className="top-bar">
-          <div className="search-container">
-            <input type="text" placeholder="Suchen..." className="search-input" />
-          </div>
-          <div className="quick-actions">
-            <button className="quick-btn">+ Neu</button>
-          </div>
-        </div>
-        
+      <div className="main-content">        
         <div className="content-area">
           {renderContent()}
         </div>
