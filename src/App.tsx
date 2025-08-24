@@ -36,6 +36,7 @@ function App() {
     category: 'allgemein',
     priority: 1,
     is_favorite: false,
+    is_private: false,
     tags: ''
   });
   const [noteImage, setNoteImage] = useState<File | null>(null);
@@ -135,6 +136,7 @@ function App() {
       category: 'allgemein',
       priority: 1,
       is_favorite: false,
+      is_private: false,
       tags: ''
     });
     setNoteImage(null);
@@ -147,9 +149,10 @@ function App() {
     setNewNote({
       title: note.title,
       content: note.content,
-      category: note.category,
-      priority: note.priority,
-      is_favorite: note.is_favorite,
+      category: note.category || 'allgemein',
+      priority: note.priority || 1,
+      is_favorite: note.is_favorite || false,
+      is_private: (note as any).is_private || false,
       tags: note.tags || ''
     });
     setNoteImage(null); // Reset image for editing
@@ -321,11 +324,13 @@ function App() {
             : event
         ));
       } else {
-        const event: CalendarEvent = {
+        const event = {
           id: events.length + 1,
           date: selectedDate,
           title: newEvent.title,
+          type: newEvent.type as 'birthday' | 'date' | 'reminder' | 'other' | 'anniversary',
           description: newEvent.description,
+          created_at: new Date().toISOString(),
           is_recurring: newEvent.recurring,
           recurrence_type: newEvent.recurring ? 'yearly' : undefined
         };
@@ -341,8 +346,9 @@ function App() {
       setIsLoading(true);
       
       // Erst das Event erstellen/aktualisieren
-      const eventData: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'> = {
+      const eventData = {
         title: newEvent.title,
+        type: newEvent.type as 'birthday' | 'date' | 'reminder' | 'other' | 'anniversary',
         description: newEvent.description,
         date: selectedDate,
         end_date: newEvent.isMultiDay ? selectedEndDate : undefined,
@@ -927,6 +933,7 @@ function App() {
                           category: category,
                           priority: 1,
                           is_favorite: false,
+                          is_private: false,
                           tags: ''
                         });
                         setEditingNote(null);
