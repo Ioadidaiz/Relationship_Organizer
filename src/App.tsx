@@ -741,15 +741,7 @@ function App() {
         );
       case 'startseite':
         return (
-          <div className="dashboard">
-            <div className="hero-section">
-              <h1>Für heute</h1>
-              <div className="hero-card">
-                <h3>Kleine Geste für heute</h3>
-                <p>Zeit für eine liebevolle Überraschung - 10 Minuten reichen!</p>
-              </div>
-            </div>
-            
+          <div className="dashboard">            
             <div className="content-rails">
               <div className="rail">
                 <h2>Anstehende Anlässe</h2>
@@ -1137,9 +1129,6 @@ function App() {
   return (
     <div className="app">
       <div className="sidebar">
-        <div className="logo">
-          <h2>Beziehungs Organizer</h2>
-        </div>
         <nav className="navigation">
           {menuItems.map(item => (
             <button
