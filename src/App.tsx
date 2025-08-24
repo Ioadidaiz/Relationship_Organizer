@@ -1145,6 +1145,20 @@ function App() {
 
       <div className="main-content">        
         <div className="content-area">
+          {/* Panorama Header - nur für Startseite, am Anfang des Contents */}
+          {activeSection === 'startseite' && (
+            <div className="panorama-header-fullwidth">
+              <div className="black-spacer-top"></div>
+              <div className="panorama-container">
+                <img 
+                  src="/panorama-rio.png" 
+                  alt="Panorama von Rio de Janeiro" 
+                  className="panorama-image"
+                />
+              </div>
+              <div className="black-spacer-bottom"></div>
+            </div>
+          )}
           {renderContent()}
         </div>
 

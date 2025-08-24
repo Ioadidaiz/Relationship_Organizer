@@ -208,6 +208,62 @@
   margin: 0 auto;
 }
 
+/* Panorama Header */
+.panorama-header {
+  width: 100%;
+  margin-bottom: 40px;
+}
+
+/* Panorama Header Full Width - spans from sidebar to right edge */
+.panorama-header-fullwidth {
+  position: relative;
+  width: 100vw;
+  margin-left: -40px; /* Kompensiert das padding der content-area */
+  margin-right: -40px;
+  left: -200px; /* Kompensiert die 240px sidebar minus 40px padding */
+  margin-bottom: 40px;
+}
+
+.panorama-header-fullwidth .black-spacer-top,
+.panorama-header-fullwidth .black-spacer-bottom,
+.black-spacer-top,
+.black-spacer-bottom {
+  height: 2cm; /* 2cm schwarzer Hintergrund */
+  background-color: #141414; /* Gleiche Farbe wie App-Hintergrund */
+  width: 100%;
+}
+
+.panorama-header-fullwidth .panorama-container,
+.panorama-container {
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #141414; /* Gleiche Farbe wie App-Hintergrund */
+}
+
+.panorama-header-fullwidth .panorama-image,
+.panorama-image {
+  width: 100%;
+  height: 400px; /* Doppelt so hoch wie vorher */
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* Responsive Anpassungen */
+@media (max-width: 768px) {
+  .panorama-image {
+    height: 240px; /* Auch auf Mobile doppelt so hoch */
+  }
+  
+  .black-spacer-top,
+  .black-spacer-bottom {
+    height: 1cm;
+  }
+}
+
 .hero-section {
   margin-bottom: 50px;
 }
