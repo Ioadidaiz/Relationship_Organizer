@@ -72,6 +72,60 @@ function App() {
     };
   }, []);
 
+  // Bild-Optimierungsfunktionen
+  const optimizeImageForCard = (file: File, targetWidth: number = 300, targetHeight: number = 200): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Canvas auf Zielgröße setzen
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        
+        // Berechne Skalierung für optimalen Fit (behält Seitenverhältnis bei, füllt aber den gesamten Bereich)
+        const scaleX = targetWidth / img.width;
+        const scaleY = targetHeight / img.height;
+        const scale = Math.max(scaleX, scaleY); // Verwende die größere Skalierung, um den gesamten Bereich zu füllen
+        
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        
+        // Zentriere das Bild
+        const offsetX = (targetWidth - scaledWidth) / 2;
+        const offsetY = (targetHeight - scaledHeight) / 2;
+        
+        // Zeichne das skalierte Bild
+        if (ctx) {
+          ctx.fillStyle = '#333'; // Hintergrundfarbe für transparente Bereiche
+          ctx.fillRect(0, 0, targetWidth, targetHeight);
+          ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+        }
+        
+        // Konvertiere zu Data URL
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // Bild-URL optimieren (für bereits hochgeladene Bilder)
+  const getOptimizedImageUrl = (originalUrl: string): string => {
+    // Falls das Backend eine Thumbnail-API hätte, würden wir sie hier nutzen
+    // Vorerst geben wir die Original-URL zurück, da der Browser mit CSS object-fit handled
+    return originalUrl;
+  };
+
+  // Fallback-Bild mit konsistenter Größe
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, fallbackSrc: string = '/image1.jpg') => {
+    const target = e.target as HTMLImageElement;
+    if (target.src !== fallbackSrc) {
+      target.src = fallbackSrc;
+    }
+  };
+
   const checkServerConnection = async () => {
     try {
       const connected = await apiService.isServerRunning();
@@ -784,11 +838,13 @@ function App() {
                           <div className="flip-card-front">
                             <div className="card-image">
                               <img 
-                                src={event.displayImage} 
+                                src={getOptimizedImageUrl(event.displayImage)} 
                                 alt={event.title}
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.src = '/image1.jpg';
+                                onError={(e) => handleImageError(e, '/image1.jpg')}
+                                loading="lazy"
+                                style={{
+                                  imageRendering: 'auto',
+                                  filter: 'brightness(1.05) contrast(1.02)'
                                 }}
                               />
                             </div>
@@ -807,11 +863,13 @@ function App() {
                           <div className="flip-card-back">
                             <div className="card-image">
                               <img 
-                                src={event.displayImage} 
+                                src={getOptimizedImageUrl(event.displayImage)} 
                                 alt={event.title}
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.src = '/image1.jpg';
+                                onError={(e) => handleImageError(e, '/image1.jpg')}
+                                loading="lazy"
+                                style={{
+                                  imageRendering: 'auto',
+                                  filter: 'brightness(1.05) contrast(1.02)'
                                 }}
                               />
                               <div className="image-overlay"></div>
@@ -851,24 +909,42 @@ function App() {
               <div className="rail">
                 <h2>Zuletzt hinzugefügt</h2>
                 <div className="rail-items">
-                  <div className="rail-card">
-                    <div className="card-image">
-                      <img src="/image3.jpg" alt="Kaffee-Präferenz" />
+                  {notes.length > 0 ? (
+                    notes
+                      .sort((a, b) => new Date(b.updated_at || b.created_at!).getTime() - new Date(a.updated_at || a.created_at!).getTime())
+                      .slice(0, 4) // Zeige die 4 neuesten Notizen
+                      .map((note, index) => (
+                        <div key={note.id || index} className="rail-card">
+                          <div className="card-image">
+                            <img 
+                              src={note.image_path ? getOptimizedImageUrl(`http://localhost:5000${note.image_path}`) : '/image3.jpg'} 
+                              alt={note.title}
+                              onError={(e) => handleImageError(e, '/image3.jpg')}
+                              loading="lazy" // Lazy loading für bessere Performance
+                              style={{
+                                imageRendering: 'auto', // Bessere Bild-Qualität
+                                filter: 'brightness(1.05) contrast(1.02)' // Leichte Verbesserung der Bildqualität
+                              }}
+                            />
+                          </div>
+                          <div className="card-content">
+                            <h4>{note.title}</h4>
+                            <p>{note.content.length > 50 ? note.content.substring(0, 50) + '...' : note.content}</p>
+                            <small>{note.category ? (note.category.charAt(0).toUpperCase() + note.category.slice(1)) : 'Allgemein'}</small>
+                          </div>
+                        </div>
+                      ))
+                  ) : (
+                    <div className="rail-card empty-state">
+                      <div className="card-image">
+                        <img src="/image3.jpg" alt="Keine Notizen" />
+                      </div>
+                      <div className="card-content">
+                        <h4>Noch keine Notizen</h4>
+                        <p>Erstelle deine erste Notiz!</p>
+                      </div>
                     </div>
-                    <div className="card-content">
-                      <h4>Kaffee-Präferenz</h4>
-                      <p>Oat Flat White, nicht süß</p>
-                    </div>
-                  </div>
-                  <div className="rail-card">
-                    <div className="card-image">
-                      <img src="/image4.jpg" alt="Film-Wunsch" />
-                    </div>
-                    <div className="card-content">
-                      <h4>Film-Wunsch</h4>
-                      <p>Möchte "Cozy Crime" Serie sehen</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
