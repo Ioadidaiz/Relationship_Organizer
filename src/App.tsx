@@ -166,7 +166,7 @@ function App() {
     }
   };
 
-  // Hole die nächsten 4 anstehenden Termine
+  // Hole alle anstehenden Termine (horizontal scrollbar)
   const getUpcomingEvents = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -178,7 +178,7 @@ function App() {
         return eventDate >= today;
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(0, 4) // Nur 4 Events anzeigen
+      // Alle Events anzeigen - horizontal scrollbar
       .map(event => {
         console.log('Event:', event.title, 'Images:', event.images); // Debug-Output
         return {
@@ -912,7 +912,7 @@ function App() {
                   {notes.length > 0 ? (
                     notes
                       .sort((a, b) => new Date(b.updated_at || b.created_at!).getTime() - new Date(a.updated_at || a.created_at!).getTime())
-                      .slice(0, 4) // Zeige die 4 neuesten Notizen
+                      // Alle Notizen anzeigen - horizontal scrollbar
                       .map((note, index) => (
                         <div key={note.id || index} className="rail-card">
                           <div className="card-image">

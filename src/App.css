@@ -433,6 +433,8 @@
   gap: 16px;
   overflow-x: auto;
   padding-bottom: 10px;
+  scroll-behavior: smooth; /* Smooth scrolling */
+  -webkit-overflow-scrolling: touch; /* Better mobile scrolling */
 }
 
 .rail-items::-webkit-scrollbar {
