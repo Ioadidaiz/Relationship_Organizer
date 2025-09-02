@@ -97,15 +97,23 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background-color: rgba(26, 26, 26, 0.5); /* 50% Transparenz des Hintergrunds */
-  backdrop-filter: blur(10px); /* Blur-Effekt für bessere Lesbarkeit */
-  border-bottom: 1px solid rgba(51, 51, 51, 0.5);
+  background-color: rgba(26, 26, 26, 1); /* Standard: 100% opak (dunkel/schwarz) */
+  backdrop-filter: none; /* Kein Blur-Effekt ganz oben */
+  border-bottom: 1px solid rgba(51, 51, 51, 1);
   flex-wrap: wrap;
   position: fixed; /* Fixiert an der Oberseite */
   top: 0;
   left: 0;
   right: 0;
   z-index: 1000; /* Über andere Elemente */
+  transition: background-color 0.3s ease, backdrop-filter 0.3s ease, border-bottom-color 0.3s ease; /* Smooth transition */
+}
+
+/* Scrolled State - wird per JavaScript hinzugefügt */
+.top-navigation.scrolled {
+  background-color: rgba(26, 26, 26, 0.5); /* 50% Transparenz beim Scrollen */
+  backdrop-filter: blur(10px); /* Blur-Effekt beim Scrollen */
+  border-bottom: 1px solid rgba(51, 51, 51, 0.5);
 }
 
 .top-nav-item {
@@ -216,6 +224,8 @@
   width: 100vw;
   margin-left: -40px; /* Kompensiert das padding der content-area */
   margin-right: -40px;
+  margin-top: -80px; /* Kompensiert das padding-top der content-area */
+  padding-top: 60px; /* Fügt Platz für die fixierte Navigation hinzu (ca. 60px Höhe) */
   left: 0; /* Keine Sidebar-Kompensation mehr nötig */
   margin-bottom: 40px;
 }
@@ -224,7 +234,7 @@
 .panorama-header-fullwidth .black-spacer-bottom,
 .black-spacer-top,
 .black-spacer-bottom {
-  height: 2cm; /* 2cm schwarzer Hintergrund */
+  height: 0px; /* Entfernt die schwarzen Bereiche, damit das Bild mehr Platz hat */
   background-color: #141414; /* Gleiche Farbe wie App-Hintergrund */
   width: 100%;
 }
@@ -242,7 +252,7 @@
 .panorama-header-fullwidth .panorama-image,
 .panorama-image {
   width: 100%;
-  height: 400px; /* Doppelt so hoch wie vorher */
+  height: 480px; /* Erhöht von 400px auf 480px für mehr dramatischen Effekt */
   object-fit: cover;
   object-position: center;
   display: block;
@@ -251,12 +261,12 @@
 /* Responsive Anpassungen */
 @media (max-width: 768px) {
   .panorama-image {
-    height: 240px; /* Auch auf Mobile doppelt so hoch */
+    height: 280px; /* Erhöht von 240px auf 280px für Mobile */
   }
   
   .black-spacer-top,
   .black-spacer-bottom {
-    height: 1cm;
+    height: 0px; /* Auch auf Mobile keine schwarzen Spacer */
   }
 }
 

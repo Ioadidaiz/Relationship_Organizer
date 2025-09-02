@@ -48,6 +48,30 @@ function App() {
     checkServerConnection();
   }, []);
 
+  // Scroll-Listener für Navigation Transparenz-Effekt
+  useEffect(() => {
+    const handleScroll = () => {
+      const navbar = document.querySelector('.top-navigation');
+      const scrolled = window.scrollY > 50; // Ab 50px Scroll
+      
+      if (navbar) {
+        if (scrolled) {
+          navbar.classList.add('scrolled');
+        } else {
+          navbar.classList.remove('scrolled');
+        }
+      }
+    };
+
+    // Event Listener hinzufügen
+    window.addEventListener('scroll', handleScroll);
+    
+    // Cleanup beim Unmounting
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   const checkServerConnection = async () => {
     try {
       const connected = await apiService.isServerRunning();
