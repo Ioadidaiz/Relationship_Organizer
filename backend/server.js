@@ -280,6 +280,47 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
     });
 });
 
+// Hero Image Upload
+app.post('/api/upload-hero', upload.single('heroImage'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'Keine Hero Image Datei hochgeladen' });
+    }
+    
+    const filePath = `/uploads/${req.file.filename}`;
+    const heroImageDir = path.join(__dirname, '..', 'public');
+    const publicHeroPath = path.join(heroImageDir, 'hero-image.jpg');
+    
+    try {
+        // Lösche das alte Hero Image falls vorhanden
+        if (fs.existsSync(publicHeroPath)) {
+            fs.unlinkSync(publicHeroPath);
+        }
+        
+        // Kopiere das neue Hero Image in den public Ordner
+        const uploadedFilePath = path.join(uploadsDir, req.file.filename);
+        fs.copyFileSync(uploadedFilePath, publicHeroPath);
+        
+        // Lösche das temporäre Upload-File
+        fs.unlinkSync(uploadedFilePath);
+        
+        console.log('✅ Hero Image erfolgreich aktualisiert:', req.file.originalname);
+        
+        res.json({
+            success: true,
+            message: 'Hero Image erfolgreich aktualisiert',
+            imagePath: '/hero-image.jpg',
+            originalName: req.file.originalname,
+            size: req.file.size
+        });
+    } catch (error) {
+        console.error('❌ Hero Image Upload Error:', error);
+        res.status(500).json({ 
+            error: 'Hero Image konnte nicht gespeichert werden',
+            details: error.message 
+        });
+    }
+});
+
 // Alle Bilder abrufen
 app.get('/api/images', (req, res) => {
     db.all('SELECT * FROM images ORDER BY created_at DESC', (err, rows) => {

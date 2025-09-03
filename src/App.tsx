@@ -41,11 +41,17 @@ function App() {
   });
   const [noteImage, setNoteImage] = useState<File | null>(null);
 
+  // Hero Image States
+  const [heroImage, setHeroImage] = useState<File | null>(null);
+  const [currentHeroImage, setCurrentHeroImage] = useState('/image1.jpg'); // Default hero image
+  const [isUploadingHero, setIsUploadingHero] = useState(false);
+
   // Lade Events und Notizen beim Start
   useEffect(() => {
     loadEvents();
     loadNotes();
     checkServerConnection();
+    loadCurrentHeroImage();
   }, []);
 
   // Scroll-Listener für Navigation Transparenz-Effekt
@@ -124,6 +130,117 @@ function App() {
     if (target.src !== fallbackSrc) {
       target.src = fallbackSrc;
     }
+  };
+
+  // Hero Image Upload und Skalierung
+  const handleHeroImageUpload = async (file: File) => {
+    if (!file) return;
+    
+    setIsUploadingHero(true);
+    try {
+      // Bild für Hero-Format optimieren (1920x480 für Desktop, responsive für Mobile)
+      const optimizedImage = await optimizeHeroImage(file);
+      
+      // FormData für Upload erstellen
+      const formData = new FormData();
+      
+      // Blob aus Canvas DataURL erstellen
+      const response = await fetch(optimizedImage);
+      const blob = await response.blob();
+      formData.append('heroImage', blob, `hero-${Date.now()}.jpg`);
+      
+      // Upload zum Backend
+      const uploadResponse = await fetch('http://localhost:5000/api/upload-hero', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (uploadResponse.ok) {
+        const result = await uploadResponse.json();
+        setCurrentHeroImage(result.imagePath);
+        setHeroImage(null);
+        // Seite neu laden um das neue Hero Image anzuzeigen
+        window.location.reload();
+      } else {
+        throw new Error('Upload fehlgeschlagen');
+      }
+    } catch (error) {
+      console.error('Hero Image Upload Error:', error);
+      setError('Hero Image Upload fehlgeschlagen. Bitte versuchen Sie es erneut.');
+    } finally {
+      setIsUploadingHero(false);
+    }
+  };
+
+  // Hero Image für optimales Format skalieren
+  const optimizeHeroImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Hero Image Dimensionen: 1920x480 (Desktop-optimiert)
+        const targetWidth = 1920;
+        const targetHeight = 480;
+        
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        
+        if (!ctx) {
+          reject(new Error('Canvas context nicht verfügbar'));
+          return;
+        }
+        
+        // Bild proportional skalieren und zentrieren
+        const sourceRatio = img.width / img.height;
+        const targetRatio = targetWidth / targetHeight;
+        
+        let drawWidth, drawHeight, drawX, drawY;
+        
+        if (sourceRatio > targetRatio) {
+          // Bild ist breiter -> Höhe anpassen
+          drawHeight = targetHeight;
+          drawWidth = drawHeight * sourceRatio;
+          drawX = (targetWidth - drawWidth) / 2;
+          drawY = 0;
+        } else {
+          // Bild ist höher -> Breite anpassen
+          drawWidth = targetWidth;
+          drawHeight = drawWidth / sourceRatio;
+          drawX = 0;
+          drawY = (targetHeight - drawHeight) / 2;
+        }
+        
+        // Schwarzen Hintergrund für Letterboxing
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, targetWidth, targetHeight);
+        
+        // Bild zeichnen
+        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+        
+        // Als JPEG mit hoher Qualität konvertieren
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      
+      img.onerror = () => reject(new Error('Bild konnte nicht geladen werden'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // Aktuelles Hero Image laden
+  const loadCurrentHeroImage = () => {
+    // Prüfe ob custom hero image existiert
+    const heroImagePath = '/hero-image.jpg';
+    const img = new Image();
+    img.onload = () => {
+      setCurrentHeroImage(heroImagePath);
+    };
+    img.onerror = () => {
+      // Fallback zum default image
+      setCurrentHeroImage('/panorama-rio.png');
+    };
+    img.src = heroImagePath;
   };
 
   const checkServerConnection = async () => {
@@ -1223,6 +1340,116 @@ function App() {
             </div>
           </div>
         );
+      case 'einstellungen':
+        return (
+          <div className="settings-view">
+            <div className="settings-header">
+              <h1>⚙️ Einstellungen</h1>
+              <p>Personalisiere deine Anwendung</p>
+            </div>
+            
+            <div className="settings-content">
+              <div className="settings-section">
+                <div className="settings-card">
+                  <div className="settings-card-header">
+                    <h3>🖼️ Hero Image</h3>
+                    <p>Ändere das Hintergrundbild der Startseite</p>
+                  </div>
+                  
+                  <div className="hero-image-preview">
+                    <img 
+                      src={currentHeroImage}
+                      alt="Current Hero"
+                      className="current-hero-preview"
+                      onError={(e) => handleImageError(e, '/hero-image.jpg')}
+                    />
+                    <div className="hero-image-overlay">
+                      <span>Aktuelles Hero Image</span>
+                    </div>
+                  </div>
+                  
+                  <div className="hero-upload-section">
+                    <div className="upload-instructions">
+                      <h4>🎯 Optimale Bildgröße</h4>
+                      <ul>
+                        <li>Empfohlene Auflösung: 1920x480 Pixel</li>
+                        <li>Unterstützte Formate: JPG, PNG, WebP</li>
+                        <li>Das Bild wird automatisch optimiert und skaliert</li>
+                        <li>Dunkle Bilder funktionieren am besten mit dem weißen Text</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="hero-upload-controls">
+                      <input
+                        type="file"
+                        id="hero-image-input"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setHeroImage(file);
+                          }
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                      
+                      <label htmlFor="hero-image-input" className="upload-btn">
+                        📁 Bild auswählen
+                      </label>
+                      
+                      {heroImage && (
+                        <div className="selected-file-info">
+                          <span className="file-name">📎 {heroImage.name}</span>
+                          <button 
+                            className="upload-confirm-btn"
+                            onClick={() => handleHeroImageUpload(heroImage)}
+                            disabled={isUploadingHero}
+                          >
+                            {isUploadingHero ? '⏳ Wird hochgeladen...' : '✅ Hero Image ändern'}
+                          </button>
+                          <button 
+                            className="upload-cancel-btn"
+                            onClick={() => setHeroImage(null)}
+                            disabled={isUploadingHero}
+                          >
+                            ❌ Abbrechen
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {isUploadingHero && (
+                      <div className="upload-progress">
+                        <div className="progress-indicator">
+                          <span className="spinner">⏳</span>
+                          <span>Bild wird optimiert und hochgeladen...</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="settings-card">
+                  <div className="settings-card-header">
+                    <h3>ℹ️ Anwendungsinformationen</h3>
+                  </div>
+                  <div className="app-info">
+                    <div className="info-item">
+                      <span className="info-label">Version:</span>
+                      <span className="info-value">1.0.0</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Backend Status:</span>
+                      <span className={`info-value ${serverConnected ? 'connected' : 'disconnected'}`}>
+                        {serverConnected ? '✅ Verbunden' : '❌ Offline'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       default:
         return (
           <div className="content">
@@ -1257,9 +1484,15 @@ function App() {
               <div className="black-spacer-top"></div>
               <div className="panorama-container">
                 <img 
-                  src="/panorama-rio.png" 
-                  alt="Panorama von Rio de Janeiro" 
+                  src={currentHeroImage} 
+                  alt="Hero Panorama" 
                   className="panorama-image"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== '/panorama-rio.png') {
+                      target.src = '/panorama-rio.png';
+                    }
+                  }}
                 />
               </div>
               <div className="black-spacer-bottom"></div>
