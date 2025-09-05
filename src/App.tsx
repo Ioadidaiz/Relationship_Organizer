@@ -28,7 +28,6 @@ function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState('alle');
   const [deleteConfirmNote, setDeleteConfirmNote] = useState<number | null>(null);
   const [newNote, setNewNote] = useState({
     title: '',
@@ -77,45 +76,6 @@ function App() {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
-
-  // Bild-Optimierungsfunktionen
-  const optimizeImageForCard = (file: File, targetWidth: number = 300, targetHeight: number = 200): Promise<string> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      
-      img.onload = () => {
-        // Canvas auf Zielgröße setzen
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-        
-        // Berechne Skalierung für optimalen Fit (behält Seitenverhältnis bei, füllt aber den gesamten Bereich)
-        const scaleX = targetWidth / img.width;
-        const scaleY = targetHeight / img.height;
-        const scale = Math.max(scaleX, scaleY); // Verwende die größere Skalierung, um den gesamten Bereich zu füllen
-        
-        const scaledWidth = img.width * scale;
-        const scaledHeight = img.height * scale;
-        
-        // Zentriere das Bild
-        const offsetX = (targetWidth - scaledWidth) / 2;
-        const offsetY = (targetHeight - scaledHeight) / 2;
-        
-        // Zeichne das skalierte Bild
-        if (ctx) {
-          ctx.fillStyle = '#333'; // Hintergrundfarbe für transparente Bereiche
-          ctx.fillRect(0, 0, targetWidth, targetHeight);
-          ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
-        }
-        
-        // Konvertiere zu Data URL
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
-      };
-      
-      img.src = URL.createObjectURL(file);
-    });
-  };
 
   // Bild-URL optimieren (für bereits hochgeladene Bilder)
   const getOptimizedImageUrl = (originalUrl: string): string => {
@@ -322,21 +282,6 @@ function App() {
   };
 
   // ===== NOTIZEN HANDLER =====
-  
-  const handleAddNote = () => {
-    setEditingNote(null);
-    setNewNote({
-      title: '',
-      content: '',
-      category: 'allgemein',
-      priority: 1,
-      is_favorite: false,
-      is_private: false,
-      tags: ''
-    });
-    setNoteImage(null);
-    setShowNoteModal(true);
-  };
 
   const handleEditNote = (note: Note) => {
     console.log('Edit note clicked:', note.id);
@@ -946,7 +891,7 @@ function App() {
             <div className="content-rails">
               <div className="rail">
                 <h2>Anstehende Anlässe</h2>
-                <div className="rail-items">
+                <div className="rail-items" id="upcoming-events">
                   {getUpcomingEvents().length > 0 ? (
                     getUpcomingEvents().map((event, index) => (
                       <div key={event.id || index} className="rail-card flip-card" onClick={() => handleEditEvent(event)}>
@@ -1025,7 +970,7 @@ function App() {
 
               <div className="rail">
                 <h2>Zuletzt hinzugefügt</h2>
-                <div className="rail-items">
+                <div className="rail-items" id="latest-notes">
                   {notes.length > 0 ? (
                     notes
                       .sort((a, b) => new Date(b.updated_at || b.created_at!).getTime() - new Date(a.updated_at || a.created_at!).getTime())
@@ -1067,7 +1012,7 @@ function App() {
 
               <div className="rail">
                 <h2>Kleine Gesten (≤10 Min)</h2>
-                <div className="rail-items">
+                <div className="rail-items" id="kleine-gesten">
                   <div className="rail-card">
                     <div className="card-image"></div>
                     <div className="card-content">
@@ -1141,7 +1086,7 @@ function App() {
                       {category.charAt(0).toUpperCase() + category.slice(1)} 
                       <span className="notes-count">({categoryNotes.length})</span>
                     </h2>
-                    <div className="rail-items">
+                    <div className="rail-items" id={`category-${category}`}>
                       {/* Kategorie-Karte zum Hinzufügen */}
                       <div className="rail-card flip-card" onClick={() => {
                         setNewNote({
@@ -1313,8 +1258,8 @@ function App() {
                       {/* "Alle anzeigen" Karte falls mehr als 2 Notizen */}
                       {categoryNotes.length > 2 && (
                         <div className="rail-card show-all-card" onClick={() => {
-                          setSelectedCategory(category);
                           // Hier könntest du zu einer Detail-Ansicht wechseln
+                          console.log('Alle anzeigen für Kategorie:', category);
                         }}>
                           <div className="card-image">
                             <img 

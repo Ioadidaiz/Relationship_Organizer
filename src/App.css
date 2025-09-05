@@ -435,24 +435,28 @@
   padding-bottom: 10px;
   scroll-behavior: smooth; /* Smooth scrolling */
   -webkit-overflow-scrolling: touch; /* Better mobile scrolling */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer and Edge */
+  
+  /* Performance Optimierungen gegen Flackern */
+  will-change: scroll-position;
+  transform: translateZ(0); /* Hardware-Beschleunigung aktivieren */
+  backface-visibility: hidden; /* Gegen Flackern beim Scrollen */
 }
 
 .rail-items::-webkit-scrollbar {
-  height: 8px;
+  display: none; /* Chrome, Safari, Opera */
 }
 
-.rail-items::-webkit-scrollbar-track {
-  background: #333;
-  border-radius: 4px;
-}
-
-.rail-items::-webkit-scrollbar-thumb {
-  background: #666;
-  border-radius: 4px;
-}
-
-.rail-items::-webkit-scrollbar-thumb:hover {
-  background: #999;
+/* Performance-Optimierung für Rail-Cards */
+.rail-card {
+  /* Hardware-Beschleunigung für alle Cards */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+  
+  /* Prevent layout shifts during scroll */
+  contain: layout style paint;
 }
 
 /* Flip Card Styles - KOMPLETT NEUER ANSATZ */
@@ -540,6 +544,15 @@
   image-rendering: -webkit-optimize-contrast; /* Bessere Bildqualität in Safari */
   image-rendering: optimize-contrast; /* Standard-Optimierung */
   backface-visibility: hidden; /* Verbessert GPU-Performance */
+  
+  /* Anti-Flackern Optimierungen */
+  will-change: transform; /* GPU-Beschleunigung für Transformationen */
+  contain: layout style paint; /* Isoliert Layout-Berechnungen */
+  pointer-events: none; /* Verhindert unnötige Hover-Events während des Scrollens */
+  user-select: none; /* Verhindert Textauswahl-Artefakte */
+  -webkit-user-drag: none; /* Verhindert Drag-Artefakte */
+  -webkit-transform: translateZ(0); /* Webkit-spezifische Hardware-Beschleunigung */
+  -moz-transform: translateZ(0); /* Mozilla-spezifische Hardware-Beschleunigung */
 }
 
 /* Spezifische Verbesserungen für verschiedene Bildtypen */
@@ -571,6 +584,12 @@
 /* Standard Hover-Effekt für nicht-flip Karten */
 .rail-card:not(.flip-card):hover .card-image img {
   transform: scale(1.1) translateZ(0);
+  pointer-events: auto; /* Hover-Events wieder aktivieren */
+}
+
+/* Pointer-Events für Card selbst immer aktiviert */
+.rail-card {
+  pointer-events: auto;
 }
 
 .card-image::after {
