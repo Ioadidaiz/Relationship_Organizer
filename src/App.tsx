@@ -2,6 +2,20 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import { apiService, CalendarEvent, Note } from './services/apiService';
 
+// Temporäres Project Interface direkt hier definiert
+interface Project {
+  id: number;
+  title: string;
+  description?: string;
+  status: 'todo' | 'in-progress' | 'done';
+  priority: 'low' | 'medium' | 'high';
+  linked_event_id?: number;
+  created_at: string;
+  updated_at: string;
+  due_date?: string;
+  color?: string;
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState('startseite');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
@@ -45,10 +59,24 @@ function App() {
   const [currentHeroImage, setCurrentHeroImage] = useState('/image1.jpg'); // Default hero image
   const [isUploadingHero, setIsUploadingHero] = useState(false);
 
+  // Planer/Kanban States
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [showEventSelector, setShowEventSelector] = useState(false);
+  const [newProject, setNewProject] = useState({
+    title: '',
+    description: '',
+    linked_event_id: undefined as number | undefined,
+    due_date: '',
+    color: '#4a9eff'
+  });
+
   // Lade Events und Notizen beim Start
   useEffect(() => {
     loadEvents();
     loadNotes();
+    loadProjects(); // Projekte laden
     checkServerConnection();
     loadCurrentHeroImage();
   }, []);
@@ -243,6 +271,21 @@ function App() {
     }
   };
 
+  const loadProjects = async () => {
+    try {
+      // Direkte API-Aufrufe anstatt apiService zu verwenden
+      const response = await fetch('http://localhost:5000/api/projects');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const dbProjects = await response.json();
+      setProjects(dbProjects);
+    } catch (err) {
+      console.error('Fehler beim Laden der Projekte:', err);
+      setProjects([]);
+    }
+  };
+
   // Hole alle anstehenden Termine (horizontal scrollbar)
   const getUpcomingEvents = () => {
     const today = new Date();
@@ -398,6 +441,92 @@ function App() {
   const cancelDeleteNote = () => {
     setDeleteConfirmNote(null);
   };
+
+  // ===== PROJEKT HANDLER =====
+  const handleSaveProject = async () => {
+    if (!newProject.title) return;
+
+    try {
+      setIsLoading(true);
+      
+      const projectData = {
+        title: newProject.title,
+        description: newProject.description,
+        status: editingProject ? editingProject.status : 'todo',
+        priority: editingProject ? editingProject.priority : 'medium',
+        linked_event_id: newProject.linked_event_id,
+        due_date: newProject.due_date || undefined,
+        color: newProject.color
+      };
+
+      if (editingProject && editingProject.id) {
+        // Update Project
+        const response = await fetch(`http://localhost:5000/api/projects/${editingProject.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(projectData),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      } else {
+        // Create Project
+        const response = await fetch('http://localhost:5000/api/projects', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(projectData),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+
+      await loadProjects();
+      setShowProjectModal(false);
+      setEditingProject(null);
+      setNewProject({
+        title: '',
+        description: '',
+        linked_event_id: undefined,
+        due_date: '',
+        color: '#4a9eff'
+      });
+    } catch (err) {
+      console.error('Fehler beim Speichern des Projekts:', err);
+      setError('Fehler beim Speichern des Projekts.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteProject = async (id: number) => {
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch(`http://localhost:5000/api/projects/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      await loadProjects();
+    } catch (err) {
+      console.error('Fehler beim Löschen des Projekts:', err);
+      setError('Fehler beim Löschen des Projekts.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ===== EVENT HANDLER =====
 
   const categories = [
     'alle',
@@ -1393,6 +1522,173 @@ function App() {
                 </div>
               </div>
             </div>
+          </div>
+        );
+      case 'planer':
+        return (
+          <div className="planer-view">
+            <div className="planer-header">
+              <h1>📋 Projekt Übersicht</h1>
+              <button className="add-project-btn" onClick={() => setShowProjectModal(true)}>
+                + Neues Projekt anlegen
+              </button>
+            </div>
+            
+            <div className="projects-overview">
+              {projects.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon">📝</div>
+                  <h3>Noch keine Projekte vorhanden</h3>
+                  <p>Erstellen Sie Ihr erstes Projekt, um loszulegen!</p>
+                  <button className="create-first-project-btn" onClick={() => setShowProjectModal(true)}>
+                    Erstes Projekt erstellen
+                  </button>
+                </div>
+              ) : (
+                <div className="projects-list">
+                  {projects.map(project => (
+                    <div key={project.id} className="project-overview-card">
+                      <div className="project-card-header">
+                        <div className="project-title-section">
+                          <h3>{project.title}</h3>
+                        </div>
+                        <div className="project-actions">
+                          <button 
+                            className="edit-project-btn"
+                            onClick={() => {
+                              setEditingProject(project);
+                              setNewProject({
+                                title: project.title,
+                                description: project.description || '',
+                                linked_event_id: project.linked_event_id,
+                                due_date: project.due_date || '',
+                                color: project.color || '#4a9eff'
+                              });
+                              setShowProjectModal(true);
+                            }}
+                          >
+                            ✏️ Bearbeiten
+                          </button>
+                          <button 
+                            className="delete-project-btn"
+                            onClick={() => handleDeleteProject(project.id)}
+                          >
+                            🗑️ Löschen
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {project.description && (
+                        <div className="project-description">
+                          <p>{project.description}</p>
+                        </div>
+                      )}
+                      
+                      <div className="project-meta-info">
+                        {project.linked_event_id && (
+                          <div className="meta-row">
+                            <span className="meta-label">Verknüpftes Event:</span>
+                            <span className="linked-event-info">
+                              🔗 {events.find(e => e.id === project.linked_event_id)?.title || 'Event nicht gefunden'}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {project.due_date && (
+                          <div className="meta-row">
+                            <span className="meta-label">Fälligkeitsdatum:</span>
+                            <span className="due-date-info">
+                              � {new Date(project.due_date).toLocaleDateString('de-DE')}
+                            </span>
+                          </div>
+                        )}
+                        
+                        <div className="meta-row">
+                          <span className="meta-label">Erstellt:</span>
+                          <span className="created-date">
+                            {new Date(project.created_at).toLocaleDateString('de-DE')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Project Modal */}
+            {showProjectModal && (
+              <div className="modal-overlay" onClick={() => setShowProjectModal(false)}>
+                <div className="modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h3>{editingProject ? 'Projekt bearbeiten' : 'Neues Projekt'}</h3>
+                  </div>
+                  <div className="modal-body">
+                    <div className="form-group">
+                      <label>Titel</label>
+                      <input
+                        type="text"
+                        value={newProject.title}
+                        onChange={(e) => setNewProject({...newProject, title: e.target.value})}
+                        placeholder="Projekt-Titel..."
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>Beschreibung</label>
+                      <textarea
+                        value={newProject.description}
+                        onChange={(e) => setNewProject({...newProject, description: e.target.value})}
+                        placeholder="Beschreibung des Projekts..."
+                        rows={3}
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>Fälligkeitsdatum (optional)</label>
+                      <input
+                        type="date"
+                        value={newProject.due_date}
+                        onChange={(e) => setNewProject({...newProject, due_date: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>Mit Event verknüpfen (optional)</label>
+                      <select
+                        value={newProject.linked_event_id || ''}
+                        onChange={(e) => setNewProject({...newProject, linked_event_id: e.target.value ? parseInt(e.target.value) : undefined})}
+                      >
+                        <option value="">Kein Event</option>
+                        {events.map(event => (
+                          <option key={event.id} value={event.id}>
+                            {event.title} ({new Date(event.date).toLocaleDateString('de-DE')})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button onClick={() => {
+                      setShowProjectModal(false);
+                      setEditingProject(null);
+                      setNewProject({
+                        title: '',
+                        description: '',
+                        linked_event_id: undefined,
+                        due_date: '',
+                        color: '#4a9eff'
+                      });
+                    }}>
+                      Abbrechen
+                    </button>
+                    <button className="primary" onClick={handleSaveProject}>
+                      {editingProject ? 'Aktualisieren' : 'Erstellen'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       default:

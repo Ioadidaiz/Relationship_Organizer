@@ -75,6 +75,21 @@ db.serialize(() => {
             console.error('Fehler beim Hinzufügen der image_path Spalte:', err);
         }
     });
+
+    // Projekte Tabelle für Kanban Board / Planer
+    db.run(`CREATE TABLE IF NOT EXISTS projects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT DEFAULT 'todo' CHECK(status IN ('todo', 'in-progress', 'done')),
+        priority TEXT DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high')),
+        linked_event_id INTEGER,
+        due_date TEXT,
+        color TEXT DEFAULT '#4a9eff',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (linked_event_id) REFERENCES events (id) ON DELETE SET NULL
+    )`);
 });
 
 module.exports = db;

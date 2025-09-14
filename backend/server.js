@@ -577,6 +577,104 @@ app.delete('/api/notes/:id', (req, res) => {
     });
 });
 
+// ===== PROJEKT/PLANER ENDPOINTS =====
+
+// Alle Projekte abrufen
+app.get('/api/projects', (req, res) => {
+    const sql = 'SELECT * FROM projects ORDER BY created_at DESC';
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            console.error('Fehler beim Laden der Projekte:', err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
+// Neues Projekt erstellen
+app.post('/api/projects', (req, res) => {
+    const { title, description, status, priority, linked_event_id, due_date, color } = req.body;
+    
+    if (!title) {
+        return res.status(400).json({ error: 'Titel ist erforderlich' });
+    }
+    
+    const sql = `INSERT INTO projects (title, description, status, priority, linked_event_id, due_date, color) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    
+    db.run(sql, [title, description, status || 'todo', priority || 'medium', linked_event_id, due_date, color], function(err) {
+        if (err) {
+            console.error('Fehler beim Erstellen des Projekts:', err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        // Das erstellte Projekt zurückgeben
+        db.get('SELECT * FROM projects WHERE id = ?', [this.lastID], (err, row) => {
+            if (err) {
+                console.error('Fehler beim Abrufen des erstellten Projekts:', err);
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            res.status(201).json(row);
+        });
+    });
+});
+
+// Projekt aktualisieren
+app.put('/api/projects/:id', (req, res) => {
+    const { id } = req.params;
+    const { title, description, status, priority, linked_event_id, due_date, color } = req.body;
+    
+    const sql = `UPDATE projects 
+                 SET title = ?, description = ?, status = ?, priority = ?, 
+                     linked_event_id = ?, due_date = ?, color = ?, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?`;
+    
+    db.run(sql, [title, description, status, priority, linked_event_id, due_date, color, id], function(err) {
+        if (err) {
+            console.error('Fehler beim Aktualisieren des Projekts:', err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Projekt nicht gefunden' });
+        }
+        
+        // Das aktualisierte Projekt zurückgeben
+        db.get('SELECT * FROM projects WHERE id = ?', [id], (err, row) => {
+            if (err) {
+                console.error('Fehler beim Abrufen des aktualisierten Projekts:', err);
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            res.json(row);
+        });
+    });
+});
+
+// Projekt löschen
+app.delete('/api/projects/:id', (req, res) => {
+    const { id } = req.params;
+    
+    const sql = 'DELETE FROM projects WHERE id = ?';
+    db.run(sql, [id], function(err) {
+        if (err) {
+            console.error('Fehler beim Löschen des Projekts:', err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Projekt nicht gefunden' });
+        }
+        
+        res.json({ message: 'Projekt erfolgreich gelöscht' });
+    });
+});
+
 // Server starten
 app.listen(PORT, () => {
     console.log(`🚀 Backend Server läuft auf Port ${PORT}`);
