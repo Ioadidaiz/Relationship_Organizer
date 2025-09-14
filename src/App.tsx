@@ -16,6 +16,17 @@ interface Project {
   color?: string;
 }
 
+// Task Interface für Kanban-Board
+interface Task {
+  id: number;
+  title: string;
+  description?: string;
+  status: 'todo' | 'in-progress' | 'done';
+  project_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState('startseite');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
@@ -63,7 +74,16 @@ function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [showEventSelector, setShowEventSelector] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    status: 'todo' as 'todo' | 'in-progress' | 'done',
+    project_id: 0
+  });
   const [newProject, setNewProject] = useState({
     title: '',
     description: '',
@@ -77,6 +97,7 @@ function App() {
     loadEvents();
     loadNotes();
     loadProjects(); // Projekte laden
+    loadTasks(); // Tasks laden
     checkServerConnection();
     loadCurrentHeroImage();
   }, []);
@@ -521,6 +542,123 @@ function App() {
     } catch (err) {
       console.error('Fehler beim Löschen des Projekts:', err);
       setError('Fehler beim Löschen des Projekts.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ===== TASK HANDLER =====
+  const loadTasks = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/tasks');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const dbTasks = await response.json();
+      setTasks(dbTasks);
+    } catch (err) {
+      console.error('Fehler beim Laden der Tasks:', err);
+      setTasks([]);
+    }
+  };
+
+  const handleSaveTask = async () => {
+    if (!newTask.title || !selectedProjectId) return;
+
+    try {
+      setIsLoading(true);
+      
+      const taskData = {
+        title: newTask.title,
+        description: newTask.description,
+        status: newTask.status,
+        project_id: selectedProjectId
+      };
+
+      if (editingTask && editingTask.id) {
+        const response = await fetch(`http://localhost:5000/api/tasks/${editingTask.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(taskData),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      } else {
+        const response = await fetch('http://localhost:5000/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(taskData),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+
+      await loadTasks();
+      setShowTaskModal(false);
+      setEditingTask(null);
+      setNewTask({
+        title: '',
+        description: '',
+        status: 'todo',
+        project_id: 0
+      });
+    } catch (err) {
+      console.error('Fehler beim Speichern der Task:', err);
+      setError('Fehler beim Speichern der Task.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteTask = async (id: number) => {
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch(`http://localhost:5000/api/tasks/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      await loadTasks();
+    } catch (err) {
+      console.error('Fehler beim Löschen der Task:', err);
+      setError('Fehler beim Löschen der Task.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateTaskStatus = async (id: number, newStatus: 'todo' | 'in-progress' | 'done') => {
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch(`http://localhost:5000/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      await loadTasks();
+    } catch (err) {
+      console.error('Fehler beim Aktualisieren der Task:', err);
+      setError('Fehler beim Aktualisieren der Task.');
     } finally {
       setIsLoading(false);
     }
@@ -1554,6 +1692,12 @@ function App() {
                         </div>
                         <div className="project-actions">
                           <button 
+                            className="kanban-board-btn"
+                            onClick={() => setSelectedProjectId(project.id)}
+                          >
+                            📋 Kanban Board
+                          </button>
+                          <button 
                             className="edit-project-btn"
                             onClick={() => {
                               setEditingProject(project);
@@ -1589,7 +1733,7 @@ function App() {
                           <div className="meta-row">
                             <span className="meta-label">Verknüpftes Event:</span>
                             <span className="linked-event-info">
-                              🔗 {events.find(e => e.id === project.linked_event_id)?.title || 'Event nicht gefunden'}
+                              {events.find(e => e.id === project.linked_event_id)?.title || 'Event nicht gefunden'}
                             </span>
                           </div>
                         )}
@@ -1598,7 +1742,7 @@ function App() {
                           <div className="meta-row">
                             <span className="meta-label">Fälligkeitsdatum:</span>
                             <span className="due-date-info">
-                              � {new Date(project.due_date).toLocaleDateString('de-DE')}
+                              {new Date(project.due_date).toLocaleDateString('de-DE')}
                             </span>
                           </div>
                         )}
@@ -1700,6 +1844,280 @@ function App() {
         );
     }
   };
+
+  // Wenn ein Projekt für Kanban ausgewählt ist, zeige das Kanban-Board
+  if (selectedProjectId) {
+    const selectedProject = projects.find(p => p.id === selectedProjectId);
+    const projectTasks = tasks.filter(task => task.project_id === selectedProjectId);
+    
+    const todoTasks = projectTasks.filter(task => task.status === 'todo');
+    const inProgressTasks = projectTasks.filter(task => task.status === 'in-progress');
+    const doneTasks = projectTasks.filter(task => task.status === 'done');
+
+    return (
+      <div className="app">
+        <div className="main-content">
+          <div className="kanban-board-view">
+            {/* Kanban Header */}
+            <div className="kanban-header">
+              <button 
+                className="back-btn"
+                onClick={() => setSelectedProjectId(null)}
+              >
+                ← Zurück
+              </button>
+              <h1>{selectedProject?.title || 'Projekt'} - Kanban Board</h1>
+              <button 
+                className="add-task-btn"
+                onClick={() => {
+                  setNewTask({
+                    title: '',
+                    description: '',
+                    status: 'todo',
+                    project_id: selectedProjectId
+                  });
+                  setShowTaskModal(true);
+                }}
+              >
+                + Neue Aufgabe
+              </button>
+            </div>
+
+            {/* Kanban Columns */}
+            <div className="kanban-columns">
+              {/* Todo Column */}
+              <div className="kanban-column">
+                <div className="column-header">
+                  <h3>Zu erledigen</h3>
+                  <span className="task-count">{todoTasks.length}</span>
+                </div>
+                <div className="column-content">
+                  {todoTasks.map(task => (
+                    <div key={task.id} className="task-card">
+                      <div className="task-header">
+                        <h4>{task.title}</h4>
+                        <div className="task-actions">
+                          <button 
+                            className="edit-task-btn"
+                            onClick={() => {
+                              setEditingTask(task);
+                              setNewTask({
+                                title: task.title,
+                                description: task.description || '',
+                                status: task.status,
+                                project_id: task.project_id
+                              });
+                              setShowTaskModal(true);
+                            }}
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            className="delete-task-btn"
+                            onClick={() => handleDeleteTask(task.id)}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                      {task.description && (
+                        <div className="task-description">
+                          <p>{task.description}</p>
+                        </div>
+                      )}
+                      <div className="task-actions-bottom">
+                        <button 
+                          className="move-task-btn"
+                          onClick={() => updateTaskStatus(task.id, 'in-progress')}
+                        >
+                          → In Bearbeitung
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* In Progress Column */}
+              <div className="kanban-column">
+                <div className="column-header">
+                  <h3>In Bearbeitung</h3>
+                  <span className="task-count">{inProgressTasks.length}</span>
+                </div>
+                <div className="column-content">
+                  {inProgressTasks.map(task => (
+                    <div key={task.id} className="task-card">
+                      <div className="task-header">
+                        <h4>{task.title}</h4>
+                        <div className="task-actions">
+                          <button 
+                            className="edit-task-btn"
+                            onClick={() => {
+                              setEditingTask(task);
+                              setNewTask({
+                                title: task.title,
+                                description: task.description || '',
+                                status: task.status,
+                                project_id: task.project_id
+                              });
+                              setShowTaskModal(true);
+                            }}
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            className="delete-task-btn"
+                            onClick={() => handleDeleteTask(task.id)}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                      {task.description && (
+                        <div className="task-description">
+                          <p>{task.description}</p>
+                        </div>
+                      )}
+                      <div className="task-actions-bottom">
+                        <button 
+                          className="move-task-btn"
+                          onClick={() => updateTaskStatus(task.id, 'todo')}
+                        >
+                          ← Zurück
+                        </button>
+                        <button 
+                          className="move-task-btn"
+                          onClick={() => updateTaskStatus(task.id, 'done')}
+                        >
+                          → Erledigt
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Done Column */}
+              <div className="kanban-column">
+                <div className="column-header">
+                  <h3>Erledigt</h3>
+                  <span className="task-count">{doneTasks.length}</span>
+                </div>
+                <div className="column-content">
+                  {doneTasks.map(task => (
+                    <div key={task.id} className="task-card">
+                      <div className="task-header">
+                        <h4>{task.title}</h4>
+                        <div className="task-actions">
+                          <button 
+                            className="edit-task-btn"
+                            onClick={() => {
+                              setEditingTask(task);
+                              setNewTask({
+                                title: task.title,
+                                description: task.description || '',
+                                status: task.status,
+                                project_id: task.project_id
+                              });
+                              setShowTaskModal(true);
+                            }}
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            className="delete-task-btn"
+                            onClick={() => handleDeleteTask(task.id)}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                      {task.description && (
+                        <div className="task-description">
+                          <p>{task.description}</p>
+                        </div>
+                      )}
+                      <div className="task-actions-bottom">
+                        <button 
+                          className="move-task-btn"
+                          onClick={() => updateTaskStatus(task.id, 'in-progress')}
+                        >
+                          ← Zurück
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Task Modal */}
+            {showTaskModal && (
+              <div className="task-modal" onClick={() => setShowTaskModal(false)}>
+                <div className="task-modal-content" onClick={(e) => e.stopPropagation()}>
+                  <div className="task-modal-header">
+                    <h3>{editingTask ? 'Aufgabe bearbeiten' : 'Neue Aufgabe'}</h3>
+                    <button 
+                      className="close-modal-btn"
+                      onClick={() => setShowTaskModal(false)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <form className="task-form" onSubmit={(e) => { e.preventDefault(); handleSaveTask(); }}>
+                    <div className="form-group">
+                      <label>Titel</label>
+                      <input
+                        type="text"
+                        value={newTask.title}
+                        onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Beschreibung</label>
+                      <textarea
+                        value={newTask.description}
+                        onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                        placeholder="Beschreibung der Aufgabe..."
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Status</label>
+                      <select
+                        value={newTask.status}
+                        onChange={(e) => setNewTask({...newTask, status: e.target.value as 'todo' | 'in-progress' | 'done'})}
+                      >
+                        <option value="todo">Zu erledigen</option>
+                        <option value="in-progress">In Bearbeitung</option>
+                        <option value="done">Erledigt</option>
+                      </select>
+                    </div>
+                    <div className="task-form-actions">
+                      <button 
+                        type="button"
+                        className="cancel-task-btn"
+                        onClick={() => setShowTaskModal(false)}
+                      >
+                        Abbrechen
+                      </button>
+                      <button 
+                        type="submit"
+                        className="save-task-btn"
+                      >
+                        {editingTask ? 'Aktualisieren' : 'Erstellen'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">

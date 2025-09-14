@@ -90,6 +90,18 @@ db.serialize(() => {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (linked_event_id) REFERENCES events (id) ON DELETE SET NULL
     )`);
+
+    // Tasks Tabelle für Kanban Board Aufgaben
+    db.run(`CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT DEFAULT 'todo' CHECK(status IN ('todo', 'in-progress', 'done')),
+        project_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
+    )`);
 });
 
 module.exports = db;

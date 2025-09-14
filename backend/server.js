@@ -675,6 +675,102 @@ app.delete('/api/projects/:id', (req, res) => {
     });
 });
 
+// ===== TASKS API =====
+// GET alle Tasks
+app.get('/api/tasks', (req, res) => {
+    const sql = 'SELECT * FROM tasks ORDER BY created_at DESC';
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            console.error('Fehler beim Abrufen der Tasks:', err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
+// POST neue Task erstellen
+app.post('/api/tasks', (req, res) => {
+    const { title, description, status, project_id } = req.body;
+    
+    if (!title || !project_id) {
+        return res.status(400).json({ error: 'Titel und Projekt-ID sind erforderlich' });
+    }
+    
+    const sql = `INSERT INTO tasks (title, description, status, project_id) 
+                 VALUES (?, ?, ?, ?)`;
+    
+    db.run(sql, [title, description, status || 'todo', project_id], function(err) {
+        if (err) {
+            console.error('Fehler beim Erstellen der Task:', err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        // Gib die neue Task zurück
+        db.get('SELECT * FROM tasks WHERE id = ?', [this.lastID], (err, row) => {
+            if (err) {
+                console.error('Fehler beim Abrufen der erstellten Task:', err);
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            res.status(201).json(row);
+        });
+    });
+});
+
+// PUT Task aktualisieren
+app.put('/api/tasks/:id', (req, res) => {
+    const { id } = req.params;
+    const { title, description, status } = req.body;
+    
+    const sql = `UPDATE tasks 
+                 SET title = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?`;
+    
+    db.run(sql, [title, description, status, id], function(err) {
+        if (err) {
+            console.error('Fehler beim Aktualisieren der Task:', err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Task nicht gefunden' });
+        }
+        
+        // Gib die aktualisierte Task zurück
+        db.get('SELECT * FROM tasks WHERE id = ?', [id], (err, row) => {
+            if (err) {
+                console.error('Fehler beim Abrufen der aktualisierten Task:', err);
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            res.json(row);
+        });
+    });
+});
+
+// DELETE Task löschen
+app.delete('/api/tasks/:id', (req, res) => {
+    const { id } = req.params;
+    
+    const sql = 'DELETE FROM tasks WHERE id = ?';
+    db.run(sql, [id], function(err) {
+        if (err) {
+            console.error('Fehler beim Löschen der Task:', err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Task nicht gefunden' });
+        }
+        
+        res.json({ message: 'Task erfolgreich gelöscht' });
+    });
+});
+
 // Server starten
 app.listen(PORT, () => {
     console.log(`🚀 Backend Server läuft auf Port ${PORT}`);
