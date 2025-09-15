@@ -23,6 +23,7 @@ interface Task {
   description?: string;
   status: 'todo' | 'in-progress' | 'done';
   project_id: number;
+  due_date?: string;
   created_at: string;
   updated_at: string;
 }
@@ -94,7 +95,8 @@ function App() {
     title: '',
     description: '',
     status: 'todo' as 'todo' | 'in-progress' | 'done',
-    project_id: 0
+    project_id: 0,
+    due_date: ''
   });
   const [newProject, setNewProject] = useState({
     title: '',
@@ -584,7 +586,8 @@ function App() {
         title: newTask.title,
         description: newTask.description,
         status: newTask.status,
-        project_id: selectedProjectId
+        project_id: selectedProjectId,
+        due_date: newTask.due_date || null
       };
 
       if (editingTask && editingTask.id) {
@@ -620,7 +623,8 @@ function App() {
         title: '',
         description: '',
         status: 'todo',
-        project_id: 0
+        project_id: 0,
+        due_date: ''
       });
     } catch (err) {
       console.error('Fehler beim Speichern der Task:', err);
@@ -680,7 +684,8 @@ function App() {
         body: JSON.stringify({ 
           title: currentTask.title,
           description: currentTask.description || '',
-          status: newStatus 
+          status: newStatus,
+          due_date: currentTask.due_date || null
         }),
       });
 
@@ -742,13 +747,44 @@ function App() {
     'besonderes'
   ];
 
+  const [showDayActionModal, setShowDayActionModal] = useState(false);
+  const [selectedDateForAction, setSelectedDateForAction] = useState('');
+
   const handleDayClick = (date: string) => {
+    setSelectedDateForAction(date);
+    setShowDayActionModal(true);
+  };
+
+  const handleCreateEvent = (date: string) => {
     setSelectedDate(date);
     setEditingEvent(null);
     setNewEvent({ title: '', type: 'anniversary', description: '', recurring: false, isMultiDay: false });
     setSelectedEndDate('');
     setEventImages([]);
     setShowEventModal(true);
+    setShowDayActionModal(false);
+  };
+
+  const handleCreateTask = (date: string) => {
+    // Prüfe, ob ein Projekt ausgewählt ist oder standardmäßig das erste verwenden
+    const projectId = selectedProjectId || (projects.length > 0 ? projects[0].id : 0);
+    
+    if (projectId === 0) {
+      setError('Bitte erstelle zuerst ein Projekt, um Tasks zu erstellen.');
+      setShowDayActionModal(false);
+      return;
+    }
+
+    setNewTask({
+      title: '',
+      description: '',
+      status: 'todo',
+      project_id: projectId,
+      due_date: date
+    });
+    setEditingTask(null);
+    setShowTaskModal(true);
+    setShowDayActionModal(false);
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
@@ -984,6 +1020,11 @@ function App() {
     });
   };
 
+  // Hilfsfunktion für Tasks mit Fälligkeitsdatum
+  const getTasksForDate = (date: string) => {
+    return tasks.filter(task => task.due_date === date);
+  };
+
   // Kalender-Tage generieren
   const generateCalendarDays = () => {
     const firstDay = new Date(currentYear, currentMonth, 1);
@@ -1008,11 +1049,13 @@ function App() {
     for (let day = 1; day <= daysInMonth; day++) {
       const dateString = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
       const dayEvents = getEventsForDate(dateString);
+      const dayTasks = getTasksForDate(dateString);
       const isToday = isCurrentMonth && day === todayDate;
       
       let dayClass = 'day';
       if (isToday) dayClass += ' today';
       if (dayEvents.length > 0) dayClass += ` has-event anniversary`;
+      if (dayTasks.length > 0) dayClass += ` has-task`;
       
       days.push(
         <div 
@@ -1022,7 +1065,7 @@ function App() {
         >
           {day}
           {dayEvents.map((event, index) => (
-            <div key={index} className="event-dot" onClick={(e) => e.stopPropagation()}>
+            <div key={`event-${index}`} className="event-dot" onClick={(e) => e.stopPropagation()}>
               <span className="event-title-dot">{event.title}{event.is_recurring && " 🔄"}</span>
               <div className="event-actions-dropdown">
                 <button 
@@ -1046,6 +1089,12 @@ function App() {
                   🗑️
                 </button>
               </div>
+            </div>
+          ))}
+          {dayTasks.map((task, index) => (
+            <div key={`task-${index}`} className="task-dot" onClick={(e) => e.stopPropagation()}>
+              <span className="task-title-dot">📋 {task.title}</span>
+              <div className="task-status-indicator">{task.status === 'done' ? '✅' : task.status === 'in-progress' ? '🔄' : '📌'}</div>
             </div>
           ))}
         </div>
@@ -1985,7 +2034,8 @@ function App() {
                     title: '',
                     description: '',
                     status: 'todo',
-                    project_id: selectedProjectId
+                    project_id: selectedProjectId,
+                    due_date: ''
                   });
                   setShowTaskModal(true);
                 }}
@@ -2048,7 +2098,8 @@ function App() {
                                 title: task.title,
                                 description: task.description || '',
                                 status: task.status,
-                                project_id: task.project_id
+                                project_id: task.project_id,
+                                due_date: task.due_date || ''
                               });
                               setShowTaskModal(true);
                             }}
@@ -2066,6 +2117,11 @@ function App() {
                       {task.description && (
                         <div className="task-description">
                           <p>{task.description}</p>
+                        </div>
+                      )}
+                      {task.due_date && (
+                        <div className="task-due-date">
+                          📅 {new Date(task.due_date).toLocaleDateString('de-DE')}
                         </div>
                       )}
                       <div className="task-actions-bottom">
@@ -2133,7 +2189,8 @@ function App() {
                                 title: task.title,
                                 description: task.description || '',
                                 status: task.status,
-                                project_id: task.project_id
+                                project_id: task.project_id,
+                                due_date: task.due_date || ''
                               });
                               setShowTaskModal(true);
                             }}
@@ -2151,6 +2208,11 @@ function App() {
                       {task.description && (
                         <div className="task-description">
                           <p>{task.description}</p>
+                        </div>
+                      )}
+                      {task.due_date && (
+                        <div className="task-due-date">
+                          📅 {new Date(task.due_date).toLocaleDateString('de-DE')}
                         </div>
                       )}
                       <div className="task-actions-bottom">
@@ -2224,7 +2286,8 @@ function App() {
                                 title: task.title,
                                 description: task.description || '',
                                 status: task.status,
-                                project_id: task.project_id
+                                project_id: task.project_id,
+                                due_date: task.due_date || ''
                               });
                               setShowTaskModal(true);
                             }}
@@ -2242,6 +2305,11 @@ function App() {
                       {task.description && (
                         <div className="task-description">
                           <p>{task.description}</p>
+                        </div>
+                      )}
+                      {task.due_date && (
+                        <div className="task-due-date">
+                          📅 {new Date(task.due_date).toLocaleDateString('de-DE')}
                         </div>
                       )}
                       <div className="task-actions-bottom">
@@ -2300,6 +2368,15 @@ function App() {
                         <option value="in-progress">In Bearbeitung</option>
                         <option value="done">Erledigt</option>
                       </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Fälligkeitsdatum</label>
+                      <input
+                        type="date"
+                        value={newTask.due_date}
+                        onChange={(e) => setNewTask({...newTask, due_date: e.target.value})}
+                        placeholder="Wann soll die Aufgabe erledigt werden?"
+                      />
                     </div>
                     <div className="task-form-actions">
                       <button 
@@ -2518,6 +2595,40 @@ function App() {
                 <button className="danger" onClick={() => confirmDeleteNote(deleteConfirmNote)}>
                   Löschen
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Day Action Selection Modal */}
+        {showDayActionModal && (
+          <div className="modal-overlay">
+            <div className="modal action-selection-modal">
+              <div className="modal-header">
+                <h3>Was möchtest du erstellen?</h3>
+                <button 
+                  className="close-modal-btn"
+                  onClick={() => setShowDayActionModal(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="modal-body">
+                <p>Für den {new Date(selectedDateForAction).toLocaleDateString('de-DE')}:</p>
+                <div className="action-buttons">
+                  <button 
+                    className="action-btn event-btn"
+                    onClick={() => handleCreateEvent(selectedDateForAction)}
+                  >
+                    📅 Ereignis hinzufügen
+                  </button>
+                  <button 
+                    className="action-btn task-btn"
+                    onClick={() => handleCreateTask(selectedDateForAction)}
+                  >
+                    📋 Aufgabe erstellen
+                  </button>
+                </div>
               </div>
             </div>
           </div>

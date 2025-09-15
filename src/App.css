@@ -971,6 +971,54 @@
 .day.has-event.birthday { border-left-color: #46d369; }
 .day.has-event.holiday { border-left-color: #ffd700; }
 .day.has-event.reminder { border-left-color: #0078d4; }
+.day.has-task { border-right: 3px solid #4a9eff; }
+
+.event-dot {
+  font-size: 10px;
+  background-color: rgba(229, 9, 20, 0.8);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.task-dot {
+  font-size: 10px;
+  background-color: rgba(74, 158, 255, 0.8);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-dot:hover {
+  background-color: rgba(74, 158, 255, 1);
+}
+
+.task-title-dot {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-status-indicator {
+  font-size: 8px;
+}
 
 .event-dot {
   font-size: 10px;
@@ -1030,6 +1078,56 @@
 
 .event-actions-dropdown .delete-btn:hover {
   background-color: rgba(229, 9, 20, 0.8);
+}
+
+/* Day Action Selection Modal */
+.action-selection-modal {
+  background: #222;
+  border-radius: 8px;
+  padding: 0;
+  width: 400px;
+  max-width: 90vw;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 16px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.action-btn.event-btn {
+  background: linear-gradient(135deg, #e50914, #b8070f);
+  color: white;
+}
+
+.action-btn.event-btn:hover {
+  background: linear-gradient(135deg, #b8070f, #8a0509);
+  transform: translateY(-2px);
+}
+
+.action-btn.task-btn {
+  background: linear-gradient(135deg, #4a9eff, #3b82f6);
+  color: white;
+}
+
+.action-btn.task-btn:hover {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  transform: translateY(-2px);
 }
 
 /* Modal Styles */
@@ -2564,6 +2662,17 @@
   font-size: 12px;
   margin: 0;
   line-height: 1.4;
+}
+
+.task-due-date {
+  margin-bottom: 12px;
+  padding: 4px 8px;
+  background: rgba(234, 179, 8, 0.2);
+  border-radius: 4px;
+  color: #eab308;
+  font-size: 11px;
+  font-weight: 500;
+  display: inline-block;
 }
 
 .task-actions-bottom {

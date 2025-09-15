@@ -98,10 +98,18 @@ db.serialize(() => {
         description TEXT,
         status TEXT DEFAULT 'todo' CHECK(status IN ('todo', 'in-progress', 'done')),
         project_id INTEGER NOT NULL,
+        due_date TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
     )`);
+
+    // Füge due_date Spalte hinzu falls sie nicht existiert (für bestehende Datenbanken)
+    db.run(`ALTER TABLE tasks ADD COLUMN due_date TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error('Fehler beim Hinzufügen der due_date Spalte:', err);
+        }
+    });
 });
 
 module.exports = db;
