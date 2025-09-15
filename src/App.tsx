@@ -78,6 +78,14 @@ function App() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  // States für editierbare Spaltennamen
+  const [columnNames, setColumnNames] = useState({
+    todo: 'Zu erledigen',
+    'in-progress': 'In Bearbeitung',
+    done: 'Erledigt'
+  });
+  const [editingColumn, setEditingColumn] = useState<string | null>(null);
+  const [tempColumnName, setTempColumnName] = useState('');
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -661,6 +669,36 @@ function App() {
       setError('Fehler beim Aktualisieren der Task.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // ===== COLUMN NAME EDITING HANDLERS =====
+  const startEditingColumn = (columnKey: string) => {
+    setEditingColumn(columnKey);
+    setTempColumnName(columnNames[columnKey as keyof typeof columnNames]);
+  };
+
+  const saveColumnName = () => {
+    if (editingColumn && tempColumnName.trim()) {
+      setColumnNames(prev => ({
+        ...prev,
+        [editingColumn]: tempColumnName.trim()
+      }));
+    }
+    setEditingColumn(null);
+    setTempColumnName('');
+  };
+
+  const cancelEditingColumn = () => {
+    setEditingColumn(null);
+    setTempColumnName('');
+  };
+
+  const handleColumnNameKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveColumnName();
+    } else if (e.key === 'Escape') {
+      cancelEditingColumn();
     }
   };
 
@@ -1891,7 +1929,28 @@ function App() {
               {/* Todo Column */}
               <div className="kanban-column">
                 <div className="column-header">
-                  <h3>Zu erledigen</h3>
+                  {editingColumn === 'todo' ? (
+                    <input
+                      type="text"
+                      value={tempColumnName}
+                      onChange={(e) => setTempColumnName(e.target.value)}
+                      onKeyDown={handleColumnNameKeyPress}
+                      onBlur={saveColumnName}
+                      className="column-name-input"
+                      autoFocus
+                    />
+                  ) : (
+                    <div className="column-title-container">
+                      <h3>{columnNames.todo}</h3>
+                      <button 
+                        className="edit-column-btn"
+                        onClick={() => startEditingColumn('todo')}
+                        title="Spaltennamen bearbeiten"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
                   <span className="task-count">{todoTasks.length}</span>
                 </div>
                 <div className="column-content">
@@ -1944,7 +2003,28 @@ function App() {
               {/* In Progress Column */}
               <div className="kanban-column">
                 <div className="column-header">
-                  <h3>In Bearbeitung</h3>
+                  {editingColumn === 'in-progress' ? (
+                    <input
+                      type="text"
+                      value={tempColumnName}
+                      onChange={(e) => setTempColumnName(e.target.value)}
+                      onKeyDown={handleColumnNameKeyPress}
+                      onBlur={saveColumnName}
+                      className="column-name-input"
+                      autoFocus
+                    />
+                  ) : (
+                    <div className="column-title-container">
+                      <h3>{columnNames['in-progress']}</h3>
+                      <button 
+                        className="edit-column-btn"
+                        onClick={() => startEditingColumn('in-progress')}
+                        title="Spaltennamen bearbeiten"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
                   <span className="task-count">{inProgressTasks.length}</span>
                 </div>
                 <div className="column-content">
@@ -2003,7 +2083,28 @@ function App() {
               {/* Done Column */}
               <div className="kanban-column">
                 <div className="column-header">
-                  <h3>Erledigt</h3>
+                  {editingColumn === 'done' ? (
+                    <input
+                      type="text"
+                      value={tempColumnName}
+                      onChange={(e) => setTempColumnName(e.target.value)}
+                      onKeyDown={handleColumnNameKeyPress}
+                      onBlur={saveColumnName}
+                      className="column-name-input"
+                      autoFocus
+                    />
+                  ) : (
+                    <div className="column-title-container">
+                      <h3>{columnNames.done}</h3>
+                      <button 
+                        className="edit-column-btn"
+                        onClick={() => startEditingColumn('done')}
+                        title="Spaltennamen bearbeiten"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
                   <span className="task-count">{doneTasks.length}</span>
                 </div>
                 <div className="column-content">
