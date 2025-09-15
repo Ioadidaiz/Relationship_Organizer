@@ -86,6 +86,10 @@ function App() {
   });
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [tempColumnName, setTempColumnName] = useState('');
+  
+  // Drag & Drop States für Tasks
+  const [draggedTask, setDraggedTask] = useState<Task | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -651,12 +655,33 @@ function App() {
     try {
       setIsLoading(true);
       
-      const response = await fetch(`http://localhost:5000/api/tasks/${id}`, {
+      // Sicherstellen, dass id eine Zahl ist
+      const taskId = typeof id === 'string' ? parseInt(id) : id;
+      
+      // Zuerst die aktuelle Task-Daten holen
+      const currentTask = tasks.find(task => {
+        const taskIdNum = typeof task.id === 'string' ? parseInt(task.id) : task.id;
+        return taskIdNum === taskId;
+      });
+      
+      if (!currentTask) {
+        throw new Error('Task nicht gefunden');
+      }
+      
+      if (!currentTask.title) {
+        throw new Error('Task hat keinen gültigen Titel');
+      }
+      
+      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ 
+          title: currentTask.title,
+          description: currentTask.description || '',
+          status: newStatus 
+        }),
       });
 
       if (!response.ok) {
@@ -868,6 +893,51 @@ function App() {
 
   const removeImage = (index: number) => {
     setEventImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Drag & Drop Handler für Tasks
+  const handleTaskDragStart = (e: React.DragEvent, task: Task) => {
+    setDraggedTask(task);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', task.id.toString());
+    
+    // Visual feedback für das gezogene Element
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5';
+    }
+  };
+
+  const handleTaskDragEnd = (e: React.DragEvent) => {
+    setDraggedTask(null);
+    setDragOverColumn(null);
+    
+    // Opacity zurücksetzen
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1';
+    }
+  };
+
+  const handleColumnDragOver = (e: React.DragEvent, columnStatus: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverColumn(columnStatus);
+  };
+
+  const handleColumnDragLeave = (e: React.DragEvent) => {
+    // Nur wenn wir wirklich die Spalte verlassen (nicht bei Child-Elementen)
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverColumn(null);
+    }
+  };
+
+  const handleColumnDrop = async (e: React.DragEvent, newStatus: 'todo' | 'in-progress' | 'done') => {
+    e.preventDefault();
+    setDragOverColumn(null);
+    
+    if (draggedTask && draggedTask.status !== newStatus) {
+      await updateTaskStatus(draggedTask.id, newStatus);
+    }
+    setDraggedTask(null);
   };
 
   // Navigation zwischen Monaten
@@ -1927,7 +1997,12 @@ function App() {
             {/* Kanban Columns */}
             <div className="kanban-columns">
               {/* Todo Column */}
-              <div className="kanban-column">
+              <div 
+                className={`kanban-column ${dragOverColumn === 'todo' ? 'drag-over' : ''}`}
+                onDragOver={(e) => handleColumnDragOver(e, 'todo')}
+                onDragLeave={handleColumnDragLeave}
+                onDrop={(e) => handleColumnDrop(e, 'todo')}
+              >
                 <div className="column-header">
                   {editingColumn === 'todo' ? (
                     <input
@@ -1955,7 +2030,13 @@ function App() {
                 </div>
                 <div className="column-content">
                   {todoTasks.map(task => (
-                    <div key={task.id} className="task-card">
+                    <div 
+                      key={task.id} 
+                      className="task-card"
+                      draggable
+                      onDragStart={(e) => handleTaskDragStart(e, task)}
+                      onDragEnd={handleTaskDragEnd}
+                    >
                       <div className="task-header">
                         <h4>{task.title}</h4>
                         <div className="task-actions">
@@ -2001,7 +2082,12 @@ function App() {
               </div>
 
               {/* In Progress Column */}
-              <div className="kanban-column">
+              <div 
+                className={`kanban-column ${dragOverColumn === 'in-progress' ? 'drag-over' : ''}`}
+                onDragOver={(e) => handleColumnDragOver(e, 'in-progress')}
+                onDragLeave={handleColumnDragLeave}
+                onDrop={(e) => handleColumnDrop(e, 'in-progress')}
+              >
                 <div className="column-header">
                   {editingColumn === 'in-progress' ? (
                     <input
@@ -2029,7 +2115,13 @@ function App() {
                 </div>
                 <div className="column-content">
                   {inProgressTasks.map(task => (
-                    <div key={task.id} className="task-card">
+                    <div 
+                      key={task.id} 
+                      className="task-card"
+                      draggable
+                      onDragStart={(e) => handleTaskDragStart(e, task)}
+                      onDragEnd={handleTaskDragEnd}
+                    >
                       <div className="task-header">
                         <h4>{task.title}</h4>
                         <div className="task-actions">
@@ -2081,7 +2173,12 @@ function App() {
               </div>
 
               {/* Done Column */}
-              <div className="kanban-column">
+              <div 
+                className={`kanban-column ${dragOverColumn === 'done' ? 'drag-over' : ''}`}
+                onDragOver={(e) => handleColumnDragOver(e, 'done')}
+                onDragLeave={handleColumnDragLeave}
+                onDrop={(e) => handleColumnDrop(e, 'done')}
+              >
                 <div className="column-header">
                   {editingColumn === 'done' ? (
                     <input
@@ -2109,7 +2206,13 @@ function App() {
                 </div>
                 <div className="column-content">
                   {doneTasks.map(task => (
-                    <div key={task.id} className="task-card">
+                    <div 
+                      key={task.id} 
+                      className="task-card"
+                      draggable
+                      onDragStart={(e) => handleTaskDragStart(e, task)}
+                      onDragEnd={handleTaskDragEnd}
+                    >
                       <div className="task-header">
                         <h4>{task.title}</h4>
                         <div className="task-actions">
