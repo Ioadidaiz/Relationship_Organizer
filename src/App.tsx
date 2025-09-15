@@ -321,32 +321,108 @@ function App() {
     }
   };
 
-  // Hole alle anstehenden Termine (horizontal scrollbar)
+  // Hole nur Events (ohne Tasks)
   const getUpcomingEvents = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const upcomingEvents = events
+    return events
       .filter(event => {
         const eventDate = new Date(event.date);
         eventDate.setHours(0, 0, 0, 0);
         return eventDate >= today;
       })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      // Alle Events anzeigen - horizontal scrollbar
-      .map(event => {
-        console.log('Event:', event.title, 'Images:', event.images); // Debug-Output
+      .map(event => ({
+        ...event,
+        type: 'event' as const,
+        daysUntil: Math.ceil((new Date(event.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+        displayImage: event.images && event.images.length > 0 
+          ? `http://localhost:5000/uploads/${event.images[0].filename}`
+          : `/image${Math.floor(Math.random() * 4) + 1}.jpg`,
+        date: event.date
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
+
+  // Hole nur offene Aufgaben mit Fälligkeitsdatum
+  const getOpenTasks = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return tasks
+      .filter(task => {
+        if (!task.due_date || task.status === 'done') return false;
+        const taskDate = new Date(task.due_date);
+        taskDate.setHours(0, 0, 0, 0);
+        return taskDate >= today;
+      })
+      .map(task => {
+        const project = projects.find(p => p.id === task.project_id);
         return {
-          ...event,
-          daysUntil: Math.ceil((new Date(event.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
-          displayImage: event.images && event.images.length > 0 
-            ? `http://localhost:5000/uploads/${event.images[0].filename}` // Vollständiger Backend-Pfad
-            : `/image${Math.floor(Math.random() * 4) + 1}.jpg` // Zufälliges Standardbild
+          id: `task-${task.id}`,
+          title: task.title,
+          description: task.description || `Aufgabe für Projekt: ${project?.title || 'Unbekannt'}`,
+          date: task.due_date!,
+          type: 'task' as const,
+          status: task.status,
+          project_title: project?.title || 'Unbekannt',
+          daysUntil: Math.ceil((new Date(task.due_date!).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+          displayImage: getTaskIcon(task.status)
+        };
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
+
+  // Hole zuletzt hinzugefügte Items (Events, Tasks, Notizen)
+  const getRecentlyAdded = () => {
+    const recentEvents = events
+      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+      .slice(0, 3)
+      .map(event => ({
+        ...event,
+        type: 'event' as const,
+        itemType: 'Termin'
+      }));
+
+    const recentTasks = tasks
+      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+      .slice(0, 3)
+      .map(task => {
+        const project = projects.find(p => p.id === task.project_id);
+        return {
+          id: `task-${task.id}`,
+          title: task.title,
+          description: task.description || '',
+          type: 'task' as const,
+          status: task.status,
+          project_title: project?.title || 'Unbekannt',
+          itemType: 'Aufgabe',
+          created_at: task.created_at
         };
       });
-    
-    console.log('Upcoming events:', upcomingEvents); // Debug-Output
-    return upcomingEvents;
+
+    const recentNotes = notes
+      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+      .slice(0, 3)
+      .map(note => ({
+        ...note,
+        type: 'note' as const,
+        itemType: 'Notiz'
+      }));
+
+    return [...recentEvents, ...recentTasks, ...recentNotes]
+      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+      .slice(0, 10); // Top 10 neueste Items
+  };
+
+  // Hole das passende Icon für Task-Status
+  const getTaskIcon = (status: 'todo' | 'in-progress' | 'done') => {
+    switch (status) {
+      case 'todo': return '📌';
+      case 'in-progress': return '🔄';
+      case 'done': return '✅';
+      default: return '📋';
+    }
   };
 
   // Formatiere die Tage bis zum Event
@@ -785,6 +861,35 @@ function App() {
     setEditingTask(null);
     setShowTaskModal(true);
     setShowDayActionModal(false);
+  };
+
+  // Handler für das Klicken auf ein Event, Task oder Notiz auf der Startseite
+  const handleStartPageItemClick = (item: any) => {
+    if (item.type === 'event') {
+      handleEditEvent(item);
+    } else if (item.type === 'task') {
+      // Zum Planer wechseln und das entsprechende Projekt auswählen
+      setActiveSection('planer');
+      setSelectedProjectId(item.project_id || (projects.find(p => p.title === item.project_title)?.id) || null);
+      
+      // Optional: Task zum Bearbeiten öffnen
+      const task = tasks.find(t => t.id === parseInt(item.id.replace('task-', '')));
+      if (task) {
+        setEditingTask(task);
+        setNewTask({
+          title: task.title,
+          description: task.description || '',
+          status: task.status,
+          project_id: task.project_id,
+          due_date: task.due_date || ''
+        });
+        setShowTaskModal(true);
+      }
+    } else if (item.type === 'note') {
+      // Zu Notizen wechseln und die entsprechende Notiz zum Bearbeiten öffnen
+      setActiveSection('notizen');
+      handleEditNote(item);
+    }
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
@@ -1313,12 +1418,13 @@ function App() {
         return (
           <div className="dashboard">            
             <div className="content-rails">
+              {/* Anstehende Anlässe - nur Events */}
               <div className="rail">
                 <h2>Anstehende Anlässe</h2>
                 <div className="rail-items" id="upcoming-events">
                   {getUpcomingEvents().length > 0 ? (
                     getUpcomingEvents().map((event, index) => (
-                      <div key={event.id || index} className="rail-card flip-card" onClick={() => handleEditEvent(event)}>
+                      <div key={event.id || index} className="rail-card flip-card" onClick={() => handleStartPageItemClick(event)}>
                         <div className="flip-card-inner">
                           {/* Vorderseite */}
                           <div className="flip-card-front">
@@ -1341,7 +1447,8 @@ function App() {
                                 day: '2-digit', 
                                 month: 'short',
                                 year: 'numeric'
-                              })}</small>
+                              })}
+                              </small>
                             </div>
                           </div>
                           
@@ -1392,65 +1499,149 @@ function App() {
                 </div>
               </div>
 
+              {/* Offene Aufgaben - nur Tasks */}
               <div className="rail">
-                <h2>Zuletzt hinzugefügt</h2>
-                <div className="rail-items" id="latest-notes">
-                  {notes.length > 0 ? (
-                    notes
-                      .sort((a, b) => new Date(b.updated_at || b.created_at!).getTime() - new Date(a.updated_at || a.created_at!).getTime())
-                      // Alle Notizen anzeigen - horizontal scrollbar
-                      .map((note, index) => (
-                        <div key={note.id || index} className="rail-card">
-                          <div className="card-image">
-                            <img 
-                              src={note.image_path ? getOptimizedImageUrl(`http://localhost:5000${note.image_path}`) : '/image3.jpg'} 
-                              alt={note.title}
-                              onError={(e) => handleImageError(e, '/image3.jpg')}
-                              loading="lazy" // Lazy loading für bessere Performance
-                              style={{
-                                imageRendering: 'auto', // Bessere Bild-Qualität
-                                filter: 'brightness(1.05) contrast(1.02)' // Leichte Verbesserung der Bildqualität
-                              }}
-                            />
+                <h2>Offene Aufgaben</h2>
+                <div className="rail-items" id="open-tasks">
+                  {getOpenTasks().length > 0 ? (
+                    getOpenTasks().map((task, index) => (
+                      <div key={task.id || index} className="rail-card flip-card" onClick={() => handleStartPageItemClick(task)}>
+                        <div className="flip-card-inner">
+                          {/* Vorderseite */}
+                          <div className="flip-card-front">
+                            <div className="card-image">
+                              <div className="task-icon-display">
+                                <span className="task-icon">{task.displayImage}</span>
+                                <div className={`task-status-badge ${task.status}`}>{task.status}</div>
+                                <div className="item-type-badge">Aufgabe</div>
+                              </div>
+                            </div>
+                            <div className="card-content">
+                              <h4>{task.title}</h4>
+                              <p>{formatDaysUntil(task.daysUntil)}</p>
+                              <small>{new Date(task.date).toLocaleDateString('de-DE', { 
+                                day: '2-digit', 
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                              </small>
+                            </div>
                           </div>
-                          <div className="card-content">
-                            <h4>{note.title}</h4>
-                            <p>{note.content.length > 50 ? note.content.substring(0, 50) + '...' : note.content}</p>
-                            <small>{note.category ? (note.category.charAt(0).toUpperCase() + note.category.slice(1)) : 'Allgemein'}</small>
+                          
+                          {/* Rückseite */}
+                          <div className="flip-card-back">
+                            <div className="card-image">
+                              <div className="task-back-display">
+                                {getTaskIcon(task.status)}
+                                <div className="task-project-info">
+                                  <small>Projekt: {task.project_title}</small>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="card-content card-content-back">
+                              <h4>{task.title}</h4>
+                              <p className="event-description">
+                                {task.description || 'Keine Beschreibung verfügbar'}
+                              </p>
+                              <div className="event-meta">
+                                <small>{formatDaysUntil(task.daysUntil)}</small>
+                                <small>{new Date(task.date).toLocaleDateString('de-DE', { 
+                                  day: '2-digit', 
+                                  month: 'short',
+                                  year: 'numeric'
+                                })}</small>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      ))
+                      </div>
+                    ))
                   ) : (
                     <div className="rail-card empty-state">
                       <div className="card-image">
-                        <img src="/image3.jpg" alt="Keine Notizen" />
+                        <div className="task-icon-display">
+                          <span className="task-icon">📋</span>
+                        </div>
                       </div>
                       <div className="card-content">
-                        <h4>Noch keine Notizen</h4>
-                        <p>Erstelle deine erste Notiz!</p>
+                        <h4>Keine offenen Aufgaben</h4>
+                        <p>Erstelle deine erste Aufgabe in einem Projekt!</p>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* Zuletzt hinzugefügt */}
               <div className="rail">
-                <h2>Kleine Gesten (≤10 Min)</h2>
-                <div className="rail-items" id="kleine-gesten">
-                  <div className="rail-card">
-                    <div className="card-image"></div>
-                    <div className="card-content">
-                      <h4>Lieblings-Snack</h4>
-                      <p>5 min</p>
+                <h2>Zuletzt hinzugefügt</h2>
+                <div className="rail-items" id="recently-added">
+                  {getRecentlyAdded().length > 0 ? (
+                    getRecentlyAdded().map((item, index) => (
+                      <div key={item.id || index} className="rail-card flip-card" onClick={() => handleStartPageItemClick(item)}>
+                        <div className="flip-card-inner">
+                          {/* Vorderseite */}
+                          <div className="flip-card-front">
+                            <div className="card-image">
+                              {item.type === 'task' ? (
+                                <div className="task-icon-display">
+                                  <span className="task-icon">{getTaskIcon((item as any).status)}</span>
+                                  <div className="item-type-badge">{(item as any).itemType}</div>
+                                </div>
+                              ) : item.type === 'note' ? (
+                                <img 
+                                  src={(item as any).image_path ? getOptimizedImageUrl(`http://localhost:5000${(item as any).image_path}`) : '/image3.jpg'} 
+                                  alt={item.title}
+                                  onError={(e) => handleImageError(e, '/image3.jpg')}
+                                  loading="lazy"
+                                  style={{
+                                    imageRendering: 'auto',
+                                    filter: 'brightness(1.05) contrast(1.02)'
+                                  }}
+                                />
+                              ) : (
+                                <img 
+                                  src={getOptimizedImageUrl((item as any).displayImage || `/image${Math.floor(Math.random() * 4) + 1}.jpg`)} 
+                                  alt={item.title}
+                                  onError={(e) => handleImageError(e, '/image1.jpg')}
+                                  loading="lazy"
+                                  style={{
+                                    imageRendering: 'auto',
+                                    filter: 'brightness(1.05) contrast(1.02)'
+                                  }}
+                                />
+                              )}
+                              {item.type !== 'task' && (
+                                <div className="item-type-badge">{(item as any).itemType}</div>
+                              )}
+                            </div>
+                            <div className="card-content">
+                              <h4>{item.title}</h4>
+                              <p>{item.type === 'note' ? 
+                                ((item as any).content.length > 50 ? (item as any).content.substring(0, 50) + '...' : (item as any).content) :
+                                (item as any).description || 'Neues Item'
+                              }</p>
+                              <small>{new Date(item.created_at || '').toLocaleDateString('de-DE', { 
+                                day: '2-digit', 
+                                month: 'short',
+                                year: 'numeric'
+                              })}</small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rail-card empty-state">
+                      <div className="card-image">
+                        <img src="/image1.jpg" alt="Noch nichts erstellt" />
+                      </div>
+                      <div className="card-content">
+                        <h4>Noch nichts erstellt</h4>
+                        <p>Beginne mit deinem ersten Event, Task oder Notiz!</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="rail-card">
-                    <div className="card-image"></div>
-                    <div className="card-content">
-                      <h4>Süße Nachricht</h4>
-                      <p>2 min</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
