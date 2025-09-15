@@ -2096,25 +2096,6 @@
   transform: translateY(-2px);
 }
 
-/* Kanban Board Button */
-.kanban-board-btn {
-  background: #4a9eff;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-right: 8px;
-}
-
-.kanban-board-btn:hover {
-  background: #357bd8;
-  transform: translateY(-1px);
-}
-
 .projects-overview {
   width: 100%;
 }
@@ -2164,12 +2145,14 @@
   padding: 20px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .project-overview-card:hover {
   background: rgba(255, 255, 255, 0.12);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-color: #4a9eff;
 }
 
 .project-card-header {

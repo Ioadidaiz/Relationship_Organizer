@@ -1685,21 +1685,21 @@ function App() {
               ) : (
                 <div className="projects-list">
                   {projects.map(project => (
-                    <div key={project.id} className="project-overview-card">
+                    <div 
+                      key={project.id} 
+                      className="project-overview-card"
+                      onClick={() => setSelectedProjectId(project.id)}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <div className="project-card-header">
                         <div className="project-title-section">
                           <h3>{project.title}</h3>
                         </div>
                         <div className="project-actions">
                           <button 
-                            className="kanban-board-btn"
-                            onClick={() => setSelectedProjectId(project.id)}
-                          >
-                            📋 Kanban Board
-                          </button>
-                          <button 
                             className="edit-project-btn"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation(); // Verhindert das Öffnen des Kanban-Boards
                               setEditingProject(project);
                               setNewProject({
                                 title: project.title,
@@ -1715,7 +1715,10 @@ function App() {
                           </button>
                           <button 
                             className="delete-project-btn"
-                            onClick={() => handleDeleteProject(project.id)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Verhindert das Öffnen des Kanban-Boards
+                              handleDeleteProject(project.id);
+                            }}
                           >
                             🗑️ Löschen
                           </button>
