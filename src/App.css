@@ -206,6 +206,11 @@
   padding-top: 80px; /* Platz für die fixierte Navigation (ca. 60px Höhe + 20px Buffer) */
 }
 
+/* Content Area - weniger padding-top wenn Panorama vorhanden */
+body:has(.panorama-header-fullwidth) .content-area {
+  padding-top: 40px; /* Weniger padding da Panorama-Header bereits Abstand schafft */
+}
+
 /* Dashboard Styles */
 .dashboard {
   max-width: none; /* Entfernt die Breitenbegrenzung */
@@ -221,15 +226,17 @@
 }
 
 /* Panorama Header Full Width - spans from sidebar to right edge */
+/* Panorama Header Full Width - spans from sidebar to right edge */
+/* Panorama Header Full Width - spans from sidebar to right edge */
 .panorama-header-fullwidth {
   position: relative;
   width: 100vw;
-  margin-left: -80px; /* Kompensiert das padding der dashboard + content-area */
-  margin-right: -40px; /* Kompensiert das right padding der dashboard */
-  margin-top: -80px; /* Kompensiert das padding-top der content-area */
-  padding-top: 60px; /* Fügt Platz für die fixierte Navigation hinzu (ca. 60px Höhe) */
-  left: 0; /* Keine Sidebar-Kompensation mehr nötig */
-  margin-bottom: 40px;
+  margin-left: 0; /* Jetzt NICHT mehr innerhalb content-area, also keine negative margins */
+  margin-right: 0;
+  margin-top: 0; /* Keine Kompensation mehr nötig */
+  padding-top: 0; /* Navigation ist bereits oben */
+  left: 0;
+  margin-bottom: 0; /* Direkt an content-area anschließen */
 }
 
 .panorama-header-fullwidth .black-spacer-top,
@@ -249,6 +256,7 @@
   justify-content: center;
   align-items: center;
   background-color: #141414; /* Gleiche Farbe wie App-Hintergrund */
+  border-radius: 0 0 16px 16px; /* Nur unten abgerundet für modernes Design */
 }
 
 .panorama-header-fullwidth .panorama-image,
@@ -258,12 +266,33 @@
   object-fit: cover;
   object-position: center;
   display: block;
+  border-radius: 0 0 16px 16px; /* Passend zum Container */
 }
 
 /* Responsive Anpassungen */
 @media (max-width: 768px) {
+  .content-area {
+    padding: 20px; /* Mobile hat weniger padding */
+    padding-top: 80px;
+  }
+  
+  /* Content Area - weniger padding-top wenn Panorama vorhanden (Mobile) */
+  body:has(.panorama-header-fullwidth) .content-area {
+    padding-top: 20px;
+  }
+  
+  .dashboard {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  
   .panorama-image {
     height: 280px; /* Erhöht von 240px auf 280px für Mobile */
+    border-radius: 0 0 12px 12px; /* Etwas weniger Rundung auf Mobile */
+  }
+  
+  .panorama-container {
+    border-radius: 0 0 12px 12px; /* Passend zum Bild */
   }
   
   .black-spacer-top,
@@ -457,6 +486,10 @@
   
   /* Prevent layout shifts during scroll */
   contain: layout style paint;
+  
+  /* Abgerundete Karten */
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 /* Flip Card Styles - KOMPLETT NEUER ANSATZ */
@@ -465,7 +498,8 @@
   height: 320px; /* Etwas höher für Events mit mehr Text */
   background: transparent;
   perspective: 1000px;
-  border-radius: 8px;
+  border-radius: 12px;
+  overflow: hidden;
   cursor: pointer;
   will-change: transform;
   flex-shrink: 0; /* Verhindert Schrumpfung */
@@ -489,7 +523,7 @@
   width: 100%;
   height: 100%;
   backface-visibility: hidden;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   background-color: #1a1a1a;
   transform: translateZ(0); /* Hardware-Beschleunigung */
@@ -529,7 +563,7 @@
   position: relative;
   overflow: hidden;
   will-change: transform; /* GPU-Beschleunigung für Bilder */
-  border-radius: 8px 8px 0 0; /* Nur oben abgerundet */
+  border-radius: 12px 12px 0 0; /* Nur oben abgerundet - angepasst auf 12px */
   flex-shrink: 0; /* Verhindert Schrumpfung des Bildbereichs */
 }
 
@@ -1390,7 +1424,7 @@
 
 .note-card {
   background: #333;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 20px;
   border: 1px solid #444;
   transition: transform 0.2s, box-shadow 0.2s;
@@ -2570,7 +2604,7 @@
 .task-card {
   background: #2a2a2a;
   border: 1px solid #444;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 12px;
   cursor: grab;
   transition: all 0.2s ease;

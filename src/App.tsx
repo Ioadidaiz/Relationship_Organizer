@@ -2611,27 +2611,28 @@ function App() {
           ))}
         </div>
         
-        <div className="content-area">
-          {/* Panorama Header - nur für Startseite, am Anfang des Contents */}
-          {activeSection === 'startseite' && (
-            <div className="panorama-header-fullwidth">
-              <div className="black-spacer-top"></div>
-              <div className="panorama-container">
-                <img 
-                  src={currentHeroImage} 
-                  alt="Hero Panorama" 
-                  className="panorama-image"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    if (target.src !== '/panorama-rio.png') {
-                      target.src = '/panorama-rio.png';
-                    }
-                  }}
-                />
-              </div>
-              <div className="black-spacer-bottom"></div>
+        {/* Panorama Header - nur für Startseite, AUSSERHALB content-area für volle Breite */}
+        {activeSection === 'startseite' && (
+          <div className="panorama-header-fullwidth">
+            <div className="black-spacer-top"></div>
+            <div className="panorama-container">
+              <img 
+                src={currentHeroImage} 
+                alt="Hero Panorama" 
+                className="panorama-image"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== '/panorama-rio.png') {
+                    target.src = '/panorama-rio.png';
+                  }
+                }}
+              />
             </div>
-          )}
+            <div className="black-spacer-bottom"></div>
+          </div>
+        )}
+        
+        <div className="content-area">
           {renderContent()}
         </div>
 
