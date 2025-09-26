@@ -1992,11 +1992,19 @@ function App() {
                         onChange={(e) => setNewProject({...newProject, linked_event_id: e.target.value ? parseInt(e.target.value) : undefined})}
                       >
                         <option value="">Kein Event</option>
-                        {events.map(event => (
-                          <option key={event.id} value={event.id}>
-                            {event.title} ({new Date(event.date).toLocaleDateString('de-DE')})
-                          </option>
-                        ))}
+                        {events
+                          .filter(event => {
+                            const eventDate = new Date(event.date);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0); // Setze Zeit auf 00:00:00 für Vergleich
+                            return eventDate >= today; // Nur heutige und zukünftige Events
+                          })
+                          .map(event => (
+                            <option key={event.id} value={event.id}>
+                              {event.title} ({new Date(event.date).toLocaleDateString('de-DE')})
+                            </option>
+                          ))
+                        }
                       </select>
                     </div>
                   </div>
