@@ -2515,9 +2515,10 @@ body:has(.panorama-header-fullwidth) .content-area {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
-  height: calc(100vh - 250px);
+  height: calc(100vh - 200px); /* Flexiblere Höhe */
   overflow: hidden;
   margin: 0 20px;
+  min-height: 400px; /* Minimum-Höhe für kleine Bildschirme */
 }
 
 .kanban-column {
@@ -2527,6 +2528,8 @@ body:has(.panorama-header-fullwidth) .content-area {
   border: 1px solid #333;
   display: flex;
   flex-direction: column;
+  max-height: 100%; /* Wichtig für Scrolling */
+  min-height: 0; /* Erlaubt Flex-Items zu schrumpfen */
 }
 
 .column-header {
@@ -2596,9 +2599,32 @@ body:has(.panorama-header-fullwidth) .content-area {
 .column-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0; /* Wichtig für Scrolling in Flex-Container */
+  padding-right: 4px; /* Platz für Scrollbar */
+}
+
+/* Verbessertes Scrollbar-Design */
+.column-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.column-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.column-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.column-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .task-card {
@@ -2608,6 +2634,22 @@ body:has(.panorama-header-fullwidth) .content-area {
   padding: 12px;
   cursor: grab;
   transition: all 0.2s ease;
+}
+
+/* Ampelsystem für Task-Status */
+.task-card.status-todo {
+  background: rgba(244, 67, 54, 0.15); /* Transparentes Rot */
+  border-color: rgba(244, 67, 54, 0.4);
+}
+
+.task-card.status-in-progress {
+  background: rgba(255, 193, 7, 0.15); /* Transparentes Gelb */
+  border-color: rgba(255, 193, 7, 0.4);
+}
+
+.task-card.status-done {
+  background: rgba(76, 175, 80, 0.15); /* Transparentes Grün */
+  border-color: rgba(76, 175, 80, 0.4);
 }
 
 .task-card:active {
@@ -2733,6 +2775,18 @@ body:has(.panorama-header-fullwidth) .content-area {
   transform: translateY(-1px);
 }
 
+/* Tablet Responsive für Kanban Board */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .kanban-columns {
+    height: calc(100vh - 180px); /* Angepasste Höhe für Tablet */
+    gap: 20px;
+  }
+  
+  .column-content {
+    padding-right: 2px; /* Weniger Platz für Scrollbar auf Tablet */
+  }
+}
+
 /* Mobile Responsive für Kanban Board */
 @media (max-width: 768px) {
   .kanban-board-view {
@@ -2742,9 +2796,10 @@ body:has(.panorama-header-fullwidth) .content-area {
   .kanban-columns {
     grid-template-columns: 1fr;
     gap: 16px;
-    height: auto;
+    height: calc(100vh - 150px); /* Flexiblere Höhe für Mobile */
     overflow: visible;
     margin: 0 8px;
+    min-height: 300px; /* Minimum-Höhe für Mobile */
   }
   
   .kanban-header {
@@ -2760,7 +2815,8 @@ body:has(.panorama-header-fullwidth) .content-area {
   }
   
   .column-content {
-    max-height: 300px;
+    max-height: 250px; /* Begrenzte Höhe für Mobile-Spalten */
+    overflow-y: auto; /* Scrolling aktiviert */
   }
   
   .task-actions-bottom {

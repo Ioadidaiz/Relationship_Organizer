@@ -580,25 +580,58 @@ function App() {
 
   // Funktion zum Anzeigen von Beschreibung und Antwort
   const renderTaskContent = (task: Task) => {
-    return (
-      <>
-        {task.description && (
-          <div className="task-description">
-            <p>{task.description}</p>
-          </div>
-        )}
-        {task.result && (
+    // Prüfe erst das separate result Feld (neues Format)
+    if (task.result) {
+      return (
+        <>
+          {task.description && (
+            <div className="task-description">
+              <p>{task.description}</p>
+            </div>
+          )}
           <div className="task-result">
             <p>
-              <span>Antwort: </span>
               <strong style={{ textDecoration: 'underline', color: '#2196F3' }}>
                 {task.result}
               </strong>
             </p>
           </div>
-        )}
-      </>
-    );
+        </>
+      );
+    }
+    
+    // Prüfe das alte Format (Antwort in der Beschreibung)
+    if (task.description) {
+      const answerMatch = task.description.match(/^(.*?)\s*Antwort[/:]?\s*(.+)$/s);
+      if (answerMatch) {
+        const [, originalText, answer] = answerMatch;
+        return (
+          <>
+            {originalText.trim() && (
+              <div className="task-description">
+                <p>{originalText.trim()}</p>
+              </div>
+            )}
+            <div className="task-result">
+              <p>
+                <strong style={{ textDecoration: 'underline', color: '#2196F3' }}>
+                  {answer.trim()}
+                </strong>
+              </p>
+            </div>
+          </>
+        );
+      }
+      
+      // Normale Beschreibung ohne Antwort
+      return (
+        <div className="task-description">
+          <p>{task.description}</p>
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   const handleSaveTask = async () => {
@@ -2119,7 +2152,7 @@ function App() {
                   {todoTasks.map(task => (
                     <div 
                       key={task.id} 
-                      className="task-card"
+                      className={`task-card status-${task.status}`}
                       draggable
                       onDragStart={(e) => handleTaskDragStart(e, task)}
                       onDragEnd={handleTaskDragEnd}
@@ -2207,7 +2240,7 @@ function App() {
                   {inProgressTasks.map(task => (
                     <div 
                       key={task.id} 
-                      className="task-card"
+                      className={`task-card status-${task.status}`}
                       draggable
                       onDragStart={(e) => handleTaskDragStart(e, task)}
                       onDragEnd={handleTaskDragEnd}
@@ -2301,7 +2334,7 @@ function App() {
                   {doneTasks.map(task => (
                     <div 
                       key={task.id} 
-                      className="task-card"
+                      className={`task-card status-${task.status}`}
                       draggable
                       onDragStart={(e) => handleTaskDragStart(e, task)}
                       onDragEnd={handleTaskDragEnd}
