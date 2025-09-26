@@ -110,6 +110,13 @@ db.serialize(() => {
             console.error('Fehler beim Hinzufügen der due_date Spalte:', err);
         }
     });
+
+    // Füge result Spalte hinzu falls sie nicht existiert (für Antworten/Resultate)
+    db.run(`ALTER TABLE tasks ADD COLUMN result TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error('Fehler beim Hinzufügen der result Spalte:', err);
+        }
+    });
 });
 
 module.exports = db;

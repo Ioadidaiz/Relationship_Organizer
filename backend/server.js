@@ -691,16 +691,16 @@ app.get('/api/tasks', (req, res) => {
 
 // POST neue Task erstellen
 app.post('/api/tasks', (req, res) => {
-    const { title, description, status, project_id, due_date } = req.body;
+    const { title, description, status, project_id, due_date, result } = req.body;
     
     if (!title || !project_id) {
         return res.status(400).json({ error: 'Titel und Projekt-ID sind erforderlich' });
     }
     
-    const sql = `INSERT INTO tasks (title, description, status, project_id, due_date) 
-                 VALUES (?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO tasks (title, description, status, project_id, due_date, result) 
+                 VALUES (?, ?, ?, ?, ?, ?)`;
     
-    db.run(sql, [title, description, status || 'todo', project_id, due_date], function(err) {
+    db.run(sql, [title, description, status || 'todo', project_id, due_date, result], function(err) {
         if (err) {
             console.error('Fehler beim Erstellen der Task:', err);
             res.status(500).json({ error: err.message });
@@ -722,13 +722,13 @@ app.post('/api/tasks', (req, res) => {
 // PUT Task aktualisieren
 app.put('/api/tasks/:id', (req, res) => {
     const { id } = req.params;
-    const { title, description, status, due_date } = req.body;
+    const { title, description, status, due_date, result } = req.body;
     
     const sql = `UPDATE tasks 
-                 SET title = ?, description = ?, status = ?, due_date = ?, updated_at = CURRENT_TIMESTAMP
+                 SET title = ?, description = ?, status = ?, due_date = ?, result = ?, updated_at = CURRENT_TIMESTAMP
                  WHERE id = ?`;
     
-    db.run(sql, [title, description, status, due_date, id], function(err) {
+    db.run(sql, [title, description, status, due_date, result, id], function(err) {
         if (err) {
             console.error('Fehler beim Aktualisieren der Task:', err);
             res.status(500).json({ error: err.message });

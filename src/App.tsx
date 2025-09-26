@@ -24,6 +24,7 @@ interface Task {
   status: 'todo' | 'in-progress' | 'done';
   project_id: number;
   due_date?: string;
+  result?: string;
   created_at: string;
   updated_at: string;
 }
@@ -96,7 +97,8 @@ function App() {
     description: '',
     status: 'todo' as 'todo' | 'in-progress' | 'done',
     project_id: 0,
-    due_date: ''
+    due_date: '',
+    result: '' // Für Antworten/Resultate bei Fragen
   });
   const [newProject, setNewProject] = useState({
     title: '',
@@ -652,6 +654,29 @@ function App() {
     }
   };
 
+  // Funktion zum Anzeigen von Beschreibung und Antwort
+  const renderTaskContent = (task: Task) => {
+    return (
+      <>
+        {task.description && (
+          <div className="task-description">
+            <p>{task.description}</p>
+          </div>
+        )}
+        {task.result && (
+          <div className="task-result">
+            <p>
+              <span>Antwort: </span>
+              <strong style={{ textDecoration: 'underline', color: '#2196F3' }}>
+                {task.result}
+              </strong>
+            </p>
+          </div>
+        )}
+      </>
+    );
+  };
+
   const handleSaveTask = async () => {
     if (!newTask.title || !selectedProjectId) return;
 
@@ -663,7 +688,8 @@ function App() {
         description: newTask.description,
         status: newTask.status,
         project_id: selectedProjectId,
-        due_date: newTask.due_date || null
+        due_date: newTask.due_date || null,
+        result: newTask.result || null
       };
 
       if (editingTask && editingTask.id) {
@@ -700,7 +726,8 @@ function App() {
         description: '',
         status: 'todo',
         project_id: 0,
-        due_date: ''
+        due_date: '',
+        result: ''
       });
     } catch (err) {
       console.error('Fehler beim Speichern der Task:', err);
@@ -856,7 +883,8 @@ function App() {
       description: '',
       status: 'todo',
       project_id: projectId,
-      due_date: date
+      due_date: date,
+      result: ''
     });
     setEditingTask(null);
     setShowTaskModal(true);
@@ -2217,7 +2245,7 @@ function App() {
               >
                 ← Zurück
               </button>
-              <h1>{selectedProject?.title || 'Projekt'} - Kanban Board</h1>
+              <h1>{selectedProject?.title || 'Projekt'}</h1>
               <button 
                 className="add-task-btn"
                 onClick={() => {
@@ -2226,7 +2254,8 @@ function App() {
                     description: '',
                     status: 'todo',
                     project_id: selectedProjectId,
-                    due_date: ''
+                    due_date: '',
+                    result: ''
                   });
                   setShowTaskModal(true);
                 }}
@@ -2290,7 +2319,8 @@ function App() {
                                 description: task.description || '',
                                 status: task.status,
                                 project_id: task.project_id,
-                                due_date: task.due_date || ''
+                                due_date: task.due_date || '',
+                                result: task.result || ''
                               });
                               setShowTaskModal(true);
                             }}
@@ -2305,11 +2335,7 @@ function App() {
                           </button>
                         </div>
                       </div>
-                      {task.description && (
-                        <div className="task-description">
-                          <p>{task.description}</p>
-                        </div>
-                      )}
+                      {renderTaskContent(task)}
                       {task.due_date && (
                         <div className="task-due-date">
                           📅 {new Date(task.due_date).toLocaleDateString('de-DE')}
@@ -2381,7 +2407,8 @@ function App() {
                                 description: task.description || '',
                                 status: task.status,
                                 project_id: task.project_id,
-                                due_date: task.due_date || ''
+                                due_date: task.due_date || '',
+                                result: task.result || ''
                               });
                               setShowTaskModal(true);
                             }}
@@ -2396,11 +2423,7 @@ function App() {
                           </button>
                         </div>
                       </div>
-                      {task.description && (
-                        <div className="task-description">
-                          <p>{task.description}</p>
-                        </div>
-                      )}
+                      {renderTaskContent(task)}
                       {task.due_date && (
                         <div className="task-due-date">
                           📅 {new Date(task.due_date).toLocaleDateString('de-DE')}
@@ -2478,7 +2501,8 @@ function App() {
                                 description: task.description || '',
                                 status: task.status,
                                 project_id: task.project_id,
-                                due_date: task.due_date || ''
+                                due_date: task.due_date || '',
+                                result: task.result || ''
                               });
                               setShowTaskModal(true);
                             }}
@@ -2493,11 +2517,7 @@ function App() {
                           </button>
                         </div>
                       </div>
-                      {task.description && (
-                        <div className="task-description">
-                          <p>{task.description}</p>
-                        </div>
-                      )}
+                      {renderTaskContent(task)}
                       {task.due_date && (
                         <div className="task-due-date">
                           📅 {new Date(task.due_date).toLocaleDateString('de-DE')}
@@ -2569,6 +2589,20 @@ function App() {
                         placeholder="Wann soll die Aufgabe erledigt werden?"
                       />
                     </div>
+                    {newTask.status === 'done' && (
+                      <div className="form-group">
+                        <label>Antwort/Resultat</label>
+                        <textarea
+                          value={newTask.result}
+                          onChange={(e) => setNewTask({...newTask, result: e.target.value})}
+                          placeholder="Was ist die Antwort auf die Frage oder das Ergebnis der Aufgabe?"
+                          rows={3}
+                        />
+                        <small className="form-hint">
+                          Dieses Feld wird zur Beschreibung hinzugefügt, wenn die Aufgabe als erledigt markiert wird.
+                        </small>
+                      </div>
+                    )}
                     <div className="task-form-actions">
                       <button 
                         type="button"
