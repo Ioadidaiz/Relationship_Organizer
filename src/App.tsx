@@ -375,48 +375,6 @@ function App() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 
-  // Hole zuletzt hinzugefügte Items (Events, Tasks, Notizen)
-  const getRecentlyAdded = () => {
-    const recentEvents = events
-      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
-      .slice(0, 3)
-      .map(event => ({
-        ...event,
-        type: 'event' as const,
-        itemType: 'Termin'
-      }));
-
-    const recentTasks = tasks
-      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
-      .slice(0, 3)
-      .map(task => {
-        const project = projects.find(p => p.id === task.project_id);
-        return {
-          id: `task-${task.id}`,
-          title: task.title,
-          description: task.description || '',
-          type: 'task' as const,
-          status: task.status,
-          project_title: project?.title || 'Unbekannt',
-          itemType: 'Aufgabe',
-          created_at: task.created_at
-        };
-      });
-
-    const recentNotes = notes
-      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
-      .slice(0, 3)
-      .map(note => ({
-        ...note,
-        type: 'note' as const,
-        itemType: 'Notiz'
-      }));
-
-    return [...recentEvents, ...recentTasks, ...recentNotes]
-      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
-      .slice(0, 10); // Top 10 neueste Items
-  };
-
   // Hole das passende Icon für Task-Status
   const getTaskIcon = (status: 'todo' | 'in-progress' | 'done') => {
     switch (status) {
@@ -425,6 +383,23 @@ function App() {
       case 'done': return '✅';
       default: return '📋';
     }
+  };
+
+  // Hole alle anstehenden Aufgaben (todo und in-progress) chronologisch sortiert
+  const getUpcomingTasks = () => {
+    const upcomingTasks = tasks
+      .filter(task => 
+        task.status === 'todo' || task.status === 'in-progress'
+      )
+      .sort((a, b) => {
+        // Sortiere nach Due Date, falls vorhanden, sonst nach Erstellungsdatum
+        const aDate = a.due_date ? new Date(a.due_date) : new Date(a.created_at);
+        const bDate = b.due_date ? new Date(b.due_date) : new Date(b.created_at);
+        return aDate.getTime() - bDate.getTime();
+      });
+    
+    console.log('Upcoming tasks:', upcomingTasks); // Debug-Output
+    return upcomingTasks;
   };
 
   // Formatiere die Tage bis zum Event
@@ -678,7 +653,7 @@ function App() {
     
     // Prüfe das alte Format (Antwort in der Beschreibung)
     if (task.description) {
-      const answerMatch = task.description.match(/^(.*?)\s*Antwort[/:]?\s*(.+)$/s);
+      const answerMatch = task.description.match(/^(.*?)\s*Antwort[/:]?\s*(.+)$/);
       if (answerMatch) {
         const [, originalText, answer] = answerMatch;
         return (
@@ -942,7 +917,8 @@ function App() {
           description: task.description || '',
           status: task.status,
           project_id: task.project_id,
-          due_date: task.due_date || ''
+          due_date: task.due_date || '',
+          result: task.result || ''
         });
         setShowTaskModal(true);
       }
@@ -966,6 +942,23 @@ function App() {
     });
     setEventImages([]);
     setShowEventModal(true);
+  };
+
+  // Handler für Task-Klick - navigiere zu entsprechender Kanban-Seite
+  const handleTaskClick = (task: Task) => {
+    // Wechsle zur Planer-Sektion (Kanban-Board)
+    setActiveSection('planer');
+    
+    // Optional: Scrolle zur entsprechenden Task-Karte oder öffne Details
+    setTimeout(() => {
+      const taskElement = document.querySelector(`[data-task-id="${task.id}"]`);
+      if (taskElement) {
+        taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Füge visuellen Highlight-Effekt hinzu
+        taskElement.classList.add('highlight');
+        setTimeout(() => taskElement.classList.remove('highlight'), 2000);
+      }
+    }, 100);
   };
 
   const handleDeleteEvent = async (eventId: number) => {
@@ -1636,73 +1629,116 @@ function App() {
               {/* Zuletzt hinzugefügt */}
               <div className="rail">
                 <h2>Zuletzt hinzugefügt</h2>
-                <div className="rail-items" id="recently-added">
-                  {getRecentlyAdded().length > 0 ? (
-                    getRecentlyAdded().map((item, index) => (
-                      <div key={item.id || index} className="rail-card flip-card" onClick={() => handleStartPageItemClick(item)}>
-                        <div className="flip-card-inner">
-                          {/* Vorderseite */}
-                          <div className="flip-card-front">
-                            <div className="card-image">
-                              {item.type === 'task' ? (
-                                <div className="task-icon-display">
-                                  <span className="task-icon">{getTaskIcon((item as any).status)}</span>
-                                  <div className="item-type-badge">{(item as any).itemType}</div>
-                                </div>
-                              ) : item.type === 'note' ? (
-                                <img 
-                                  src={(item as any).image_path ? getOptimizedImageUrl(`http://localhost:5000${(item as any).image_path}`) : '/image3.jpg'} 
-                                  alt={item.title}
-                                  onError={(e) => handleImageError(e, '/image3.jpg')}
-                                  loading="lazy"
-                                  style={{
-                                    imageRendering: 'auto',
-                                    filter: 'brightness(1.05) contrast(1.02)'
-                                  }}
-                                />
-                              ) : (
-                                <img 
-                                  src={getOptimizedImageUrl((item as any).displayImage || `/image${Math.floor(Math.random() * 4) + 1}.jpg`)} 
-                                  alt={item.title}
-                                  onError={(e) => handleImageError(e, '/image1.jpg')}
-                                  loading="lazy"
-                                  style={{
-                                    imageRendering: 'auto',
-                                    filter: 'brightness(1.05) contrast(1.02)'
-                                  }}
-                                />
-                              )}
-                              {item.type !== 'task' && (
-                                <div className="item-type-badge">{(item as any).itemType}</div>
-                              )}
-                            </div>
-                            <div className="card-content">
-                              <h4>{item.title}</h4>
-                              <p>{item.type === 'note' ? 
-                                ((item as any).content.length > 50 ? (item as any).content.substring(0, 50) + '...' : (item as any).content) :
-                                (item as any).description || 'Neues Item'
-                              }</p>
-                              <small>{new Date(item.created_at || '').toLocaleDateString('de-DE', { 
-                                day: '2-digit', 
-                                month: 'short',
-                                year: 'numeric'
-                              })}</small>
-                            </div>
+                <div className="rail-items" id="latest-notes">
+                  {notes.length > 0 ? (
+                    notes
+                      .sort((a, b) => new Date(b.updated_at || b.created_at!).getTime() - new Date(a.updated_at || a.created_at!).getTime())
+                      // Alle Notizen anzeigen - horizontal scrollbar
+                      .map((note, index) => (
+                        <div key={note.id || index} className="rail-card">
+                          <div className="card-image">
+                            <img 
+                              src={note.image_path ? getOptimizedImageUrl(`http://localhost:5000${note.image_path}`) : '/image3.jpg'} 
+                              alt={note.title}
+                              onError={(e) => handleImageError(e, '/image3.jpg')}
+                              loading="lazy" // Lazy loading für bessere Performance
+                              style={{
+                                imageRendering: 'auto', // Bessere Bild-Qualität
+                                filter: 'brightness(1.05) contrast(1.02)' // Leichte Verbesserung der Bildqualität
+                              }}
+                            />
                           </div>
+                          <div className="card-content">
+                            <h4>{note.title}</h4>
+                            <p>{note.content.length > 50 ? note.content.substring(0, 50) + '...' : note.content}</p>
+                            <small>{note.category ? (note.category.charAt(0).toUpperCase() + note.category.slice(1)) : 'Allgemein'}</small>
+                          </div>
+                        </div>
+                      ))
+                  ) : (
+                    <div className="rail-card empty-state">
+                      <div className="card-image">
+                        <img src="/image3.jpg" alt="Keine Notizen" />
+                      </div>
+                      <div className="card-content">
+                        <h4>Noch keine Notizen</h4>
+                        <p>Erstelle deine erste Notiz!</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rail">
+                <h2>Anstehende Aufgaben</h2>
+                <div className="rail-items" id="upcoming-tasks">
+                  {getUpcomingTasks().length > 0 ? (
+                    getUpcomingTasks().map((task, index) => (
+                      <div 
+                        key={task.id || index} 
+                        className={`rail-card ampel-${task.status || 'todo'}`}
+                        onClick={() => handleTaskClick(task)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="card-image">
+                          <img 
+                            src="/image2.jpg"
+                            alt={task.title}
+                            onError={(e) => handleImageError(e, '/image2.jpg')}
+                            loading="lazy"
+                            style={{
+                              imageRendering: 'auto',
+                              filter: 'brightness(1.05) contrast(1.02)'
+                            }}
+                          />
+                          <div className={`status-indicator status-${task.status || 'todo'}`}></div>
+                        </div>
+                        <div className="card-content">
+                          <h4>{task.title}</h4>
+                          <p>{task.result && task.result.trim() ? task.result.substring(0, 50) + (task.result.length > 50 ? '...' : '') : 'Noch keine Lösung'}</p>
+                          <small>
+                            {task.due_date ? 
+                              `Bis: ${new Date(task.due_date).toLocaleDateString('de-DE', { 
+                                day: '2-digit', 
+                                month: 'short'
+                              })}` : 
+                              `Status: ${task.status === 'todo' ? 'Zu erledigen' : task.status === 'in-progress' ? 'In Bearbeitung' : 'Erledigt'}`
+                            }
+                          </small>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="rail-card empty-state">
                       <div className="card-image">
-                        <img src="/image1.jpg" alt="Noch nichts erstellt" />
+                        <img src="/image2.jpg" alt="Keine Aufgaben" />
                       </div>
                       <div className="card-content">
-                        <h4>Noch nichts erstellt</h4>
-                        <p>Beginne mit deinem ersten Event, Task oder Notiz!</p>
+                        <h4>Keine anstehenden Aufgaben</h4>
+                        <p>Alle Aufgaben sind erledigt!</p>
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              <div className="rail">
+                <h2>Kleine Gesten (≤10 Min)</h2>
+                <div className="rail-items" id="kleine-gesten">
+                  <div className="rail-card">
+                    <div className="card-image"></div>
+                    <div className="card-content">
+                      <h4>Lieblings-Snack</h4>
+                      <p>5 min</p>
+                    </div>
+                  </div>
+                  <div className="rail-card">
+                    <div className="card-image"></div>
+                    <div className="card-content">
+                      <h4>Süße Nachricht</h4>
+                      <p>2 min</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2344,6 +2380,7 @@ function App() {
                     <div 
                       key={task.id} 
                       className={`task-card status-${task.status}`}
+                      data-task-id={task.id}
                       draggable
                       onDragStart={(e) => handleTaskDragStart(e, task)}
                       onDragEnd={handleTaskDragEnd}
@@ -2432,6 +2469,7 @@ function App() {
                     <div 
                       key={task.id} 
                       className={`task-card status-${task.status}`}
+                      data-task-id={task.id}
                       draggable
                       onDragStart={(e) => handleTaskDragStart(e, task)}
                       onDragEnd={handleTaskDragEnd}
@@ -2526,6 +2564,7 @@ function App() {
                     <div 
                       key={task.id} 
                       className={`task-card status-${task.status}`}
+                      data-task-id={task.id}
                       draggable
                       onDragStart={(e) => handleTaskDragStart(e, task)}
                       onDragEnd={handleTaskDragEnd}

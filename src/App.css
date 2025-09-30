@@ -726,6 +726,66 @@ body:has(.panorama-header-fullwidth) .content-area {
   cursor: default;
 }
 
+/* ===== AMPEL SYSTEM FÜR RAIL-KARTEN ===== */
+/* Status-Indikator für Rail-Karten */
+.status-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  z-index: 10;
+}
+
+.status-indicator.status-todo {
+  background-color: #dc2626; /* Rot für To-Do */
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.6);
+}
+
+.status-indicator.status-in-progress {
+  background-color: #f59e0b; /* Gelb für In Progress */
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+
+.status-indicator.status-done {
+  background-color: #16a34a; /* Grün für Done */
+  box-shadow: 0 0 8px rgba(22, 163, 74, 0.6);
+}
+
+/* Ampel-Rahmen für Rail-Karten */
+.rail-card.ampel-todo {
+  border: 2px solid #dc2626;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.rail-card.ampel-in-progress {
+  border: 2px solid #f59e0b;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.rail-card.ampel-done {
+  border: 2px solid #16a34a;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+/* Hover-Effekt für Ampel-Karten */
+.rail-card.ampel-todo:hover {
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4);
+  transform: translateY(-4px);
+}
+
+.rail-card.ampel-in-progress:hover {
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+  transform: translateY(-4px);
+}
+
+.rail-card.ampel-done:hover {
+  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.4);
+  transform: translateY(-4px);
+}
+
 .card-content p {
   font-size: 14px;
   color: #999;
@@ -2458,6 +2518,26 @@ body:has(.panorama-header-fullwidth) .content-area {
   padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
+}
+
+/* Highlight-Effekt für Navigation von Homepage zu Kanban */
+.highlight {
+  animation: highlightPulse 2s ease-in-out;
+  box-shadow: 0 0 20px rgba(229, 9, 20, 0.6) !important;
+  border: 2px solid #e50914 !important;
+  transform: scale(1.02);
+  transition: all 0.3s ease;
+}
+
+@keyframes highlightPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(229, 9, 20, 0.6);
+    transform: scale(1.02);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(229, 9, 20, 0.8);
+    transform: scale(1.03);
+  }
 }
 
 .kanban-header {
