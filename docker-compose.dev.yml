@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  borganizer-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: borganizer-dev
+    ports:
+      - "3000:3000"  # Frontend
+      - "5000:5000"  # Backend
+    volumes:
+      # Source code mounting für Hot Reload
+      - .:/app
+      - /app/node_modules
+      - /app/backend/node_modules
+      # Persistente Datenbank
+      - borganizer_dev_data:/app/backend/relationship_organizer.db
+      - borganizer_dev_uploads:/app/backend/uploads
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true  # Für Windows File Watching
+    restart: unless-stopped
+
+volumes:
+  borganizer_dev_data:
+    driver: local
+  borganizer_dev_uploads:
+    driver: local

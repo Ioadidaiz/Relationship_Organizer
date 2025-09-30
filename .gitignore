@@ -27,3 +27,20 @@ backend/uploads/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Docker
+.docker/
+
+# PM2 Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.production
+
+# SSL Certificates
+certs/
+*.pem
+*.key
+*.crt

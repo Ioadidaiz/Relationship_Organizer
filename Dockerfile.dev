@@ -1,0 +1,29 @@
+# Dockerfile für Entwicklung (Hot Reload)
+FROM node:18-alpine
+
+# Install dumb-init
+RUN apk add --no-cache dumb-init
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY backend/package*.json ./backend/
+
+# Install dependencies
+RUN npm install
+RUN cd backend && npm install
+
+# Copy source code
+COPY . .
+
+# Create uploads directory
+RUN mkdir -p ./backend/uploads
+
+# Expose ports
+EXPOSE 3000 5000
+
+# Start in development mode with hot reload
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["npm", "start"]

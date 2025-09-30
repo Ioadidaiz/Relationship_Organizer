@@ -1,8 +1,15 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
-// Erstelle oder öffne die SQLite-Datenbank
-const dbPath = path.join(__dirname, 'relationship_organizer.db');
+// Erstelle das data-Verzeichnis falls es nicht existiert
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Erstelle oder öffne die SQLite-Datenbank im data-Verzeichnis
+const dbPath = path.join(dataDir, 'relationship_organizer.db');
 const db = new sqlite3.Database(dbPath);
 
 // Tabellen erstellen

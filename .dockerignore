@@ -1,0 +1,54 @@
+# Dockerignore für BOrganizer Production Build
+
+# Node modules - werden im Container neu installiert
+node_modules/
+backend/node_modules/
+
+# npm files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Git files
+.git/
+.gitignore
+
+# Development builds
+build/
+
+# SQLite database (wird persistent gemountet)
+backend/relationship_organizer.db
+backend/data/
+
+# Upload directories (wird persistent gemountet)
+backend/uploads/
+
+# Log files
+*.log
+logs/
+backend/logs/
+
+# Cache directories
+.npm
+.eslintcache
+
+# Docker files
+Dockerfile.dev
+docker-compose.dev.yml
+
+# Documentation
+README.md
+PRODUCTION.md

@@ -48,6 +48,16 @@ const upload = multer({
 // Statische Dateien für Bilder
 app.use('/uploads', express.static(uploadsDir));
 
+// Health Check für Docker/Production
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
 // ===== EVENTS ROUTEN =====
 
 // Alle Events abrufen
@@ -770,6 +780,21 @@ app.delete('/api/tasks/:id', (req, res) => {
         res.json({ message: 'Task erfolgreich gelöscht' });
     });
 });
+
+// Serve static files from React build in production (MUST be after all API routes)
+if (process.env.NODE_ENV === 'production') {
+    const buildPath = path.join(__dirname, '../build');
+    app.use(express.static(buildPath));
+    
+    // Catch all handler for React Router - MUST be last!
+    app.get('*', (req, res) => {
+        // Skip API routes (they should be handled above)
+        if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+            return res.status(404).json({ error: 'API endpoint not found' });
+        }
+        res.sendFile(path.join(buildPath, 'index.html'));
+    });
+}
 
 // Server starten
 app.listen(PORT, () => {
