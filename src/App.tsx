@@ -351,6 +351,23 @@ function App() {
     return upcomingEvents;
   };
 
+  // Hole alle anstehenden Aufgaben (todo und in-progress) chronologisch sortiert
+  const getUpcomingTasks = () => {
+    const upcomingTasks = tasks
+      .filter(task => 
+        task.status === 'todo' || task.status === 'in-progress'
+      )
+      .sort((a, b) => {
+        // Sortiere nach Due Date, falls vorhanden, sonst nach Erstellungsdatum
+        const aDate = a.due_date ? new Date(a.due_date) : new Date(a.created_at);
+        const bDate = b.due_date ? new Date(b.due_date) : new Date(b.created_at);
+        return aDate.getTime() - bDate.getTime();
+      });
+    
+    console.log('Upcoming tasks:', upcomingTasks); // Debug-Output
+    return upcomingTasks;
+  };
+
   // Formatiere die Tage bis zum Event
   const formatDaysUntil = (days: number) => {
     if (days === 0) return 'Heute';
@@ -602,7 +619,7 @@ function App() {
     
     // Prüfe das alte Format (Antwort in der Beschreibung)
     if (task.description) {
-      const answerMatch = task.description.match(/^(.*?)\s*Antwort[/:]?\s*(.+)$/s);
+      const answerMatch = task.description.match(/^(.*?)\s*Antwort[/:]?\s*(.+)$/);
       if (answerMatch) {
         const [, originalText, answer] = answerMatch;
         return (
@@ -861,6 +878,23 @@ function App() {
     });
     setEventImages([]);
     setShowEventModal(true);
+  };
+
+  // Handler für Task-Klick - navigiere zu entsprechender Kanban-Seite
+  const handleTaskClick = (task: Task) => {
+    // Wechsle zur Planer-Sektion (Kanban-Board)
+    setActiveSection('planer');
+    
+    // Optional: Scrolle zur entsprechenden Task-Karte oder öffne Details
+    setTimeout(() => {
+      const taskElement = document.querySelector(`[data-task-id="${task.id}"]`);
+      if (taskElement) {
+        taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Füge visuellen Highlight-Effekt hinzu
+        taskElement.classList.add('highlight');
+        setTimeout(() => taskElement.classList.remove('highlight'), 2000);
+      }
+    }, 100);
   };
 
   const handleDeleteEvent = async (eventId: number) => {
@@ -1489,6 +1523,59 @@ function App() {
                       <div className="card-content">
                         <h4>Noch keine Notizen</h4>
                         <p>Erstelle deine erste Notiz!</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rail">
+                <h2>Anstehende Aufgaben</h2>
+                <div className="rail-items" id="upcoming-tasks">
+                  {getUpcomingTasks().length > 0 ? (
+                    getUpcomingTasks().map((task, index) => (
+                      <div 
+                        key={task.id || index} 
+                        className={`rail-card ampel-${task.status || 'todo'}`}
+                        onClick={() => handleTaskClick(task)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="card-image">
+                          <img 
+                            src="/image2.jpg"
+                            alt={task.title}
+                            onError={(e) => handleImageError(e, '/image2.jpg')}
+                            loading="lazy"
+                            style={{
+                              imageRendering: 'auto',
+                              filter: 'brightness(1.05) contrast(1.02)'
+                            }}
+                          />
+                          <div className={`status-indicator status-${task.status || 'todo'}`}></div>
+                        </div>
+                        <div className="card-content">
+                          <h4>{task.title}</h4>
+                          <p>{task.result && task.result.trim() ? task.result.substring(0, 50) + (task.result.length > 50 ? '...' : '') : 'Noch keine Lösung'}</p>
+                          <small>
+                            {task.due_date ? 
+                              `Bis: ${new Date(task.due_date).toLocaleDateString('de-DE', { 
+                                day: '2-digit', 
+                                month: 'short'
+                              })}` : 
+                              `Status: ${task.status === 'todo' ? 'Zu erledigen' : task.status === 'in-progress' ? 'In Bearbeitung' : 'Erledigt'}`
+                            }
+                          </small>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rail-card empty-state">
+                      <div className="card-image">
+                        <img src="/image2.jpg" alt="Keine Aufgaben" />
+                      </div>
+                      <div className="card-content">
+                        <h4>Keine anstehenden Aufgaben</h4>
+                        <p>Alle Aufgaben sind erledigt!</p>
                       </div>
                     </div>
                   )}
@@ -2153,6 +2240,7 @@ function App() {
                     <div 
                       key={task.id} 
                       className={`task-card status-${task.status}`}
+                      data-task-id={task.id}
                       draggable
                       onDragStart={(e) => handleTaskDragStart(e, task)}
                       onDragEnd={handleTaskDragEnd}
@@ -2241,6 +2329,7 @@ function App() {
                     <div 
                       key={task.id} 
                       className={`task-card status-${task.status}`}
+                      data-task-id={task.id}
                       draggable
                       onDragStart={(e) => handleTaskDragStart(e, task)}
                       onDragEnd={handleTaskDragEnd}
@@ -2335,6 +2424,7 @@ function App() {
                     <div 
                       key={task.id} 
                       className={`task-card status-${task.status}`}
+                      data-task-id={task.id}
                       draggable
                       onDragStart={(e) => handleTaskDragStart(e, task)}
                       onDragEnd={handleTaskDragEnd}
