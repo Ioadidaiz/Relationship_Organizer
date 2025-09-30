@@ -1595,8 +1595,14 @@ body:has(.panorama-header-fullwidth) .content-area {
 
 /* Notizen Modal */
 .note-modal {
+  background: #222;
+  border-radius: 12px;
+  padding: 30px;
   max-width: 600px;
   width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: #ffffff;
 }
 
 .form-group {
@@ -1652,6 +1658,94 @@ body:has(.panorama-header-fullwidth) .content-area {
 .checkbox-label input[type="checkbox"] {
   width: auto !important;
   margin: 0;
+}
+
+/* Note Modal Layout - Optimiert für Scrolling */
+.note-modal {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-modal .modal-header {
+  flex-shrink: 0;
+  padding: 0 0 20px 0;
+  border-bottom: 1px solid #444;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.note-modal .modal-header h2 {
+  margin: 0;
+  color: #e50914;
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.note-modal .close-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.note-modal .close-btn:hover {
+  background: #333;
+  color: #fff;
+}
+
+.note-modal .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 5px;
+  margin-right: -5px;
+}
+
+.note-modal .modal-footer {
+  flex-shrink: 0;
+  padding: 20px 0 0 0;
+  border-top: 1px solid #444;
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.note-modal .modal-footer button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.note-modal .modal-footer button:not(.primary) {
+  background: #444;
+  color: #fff;
+}
+
+.note-modal .modal-footer button:not(.primary):hover {
+  background: #555;
+}
+
+.note-modal .modal-footer button.primary {
+  background: #e50914;
+  color: #fff;
+}
+
+.note-modal .modal-footer button.primary:hover {
+  background: #c50812;
 }
 
 .empty-state {
