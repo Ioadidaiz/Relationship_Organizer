@@ -909,6 +909,8 @@ function App() {
   const handleTaskClick = (task: Task) => {
     // Wechsle zur Planer-Sektion (Kanban-Board)
     setActiveSection('planer');
+    // Setze die entsprechende Projekt-ID direkt
+    setSelectedProjectId(task.project_id);
     
     // Optional: Scrolle zur entsprechenden Task-Karte oder öffne Details
     setTimeout(() => {
@@ -1229,6 +1231,8 @@ function App() {
     { id: 'kalender', label: 'Kalender', icon: '📅' },
     { id: 'planer', label: 'Planer', icon: '📋' },
     { id: 'stories', label: 'Stories', icon: '📖' },
+    { id: 'finanzen', label: 'Finanzen', icon: '💰' },
+    { id: 'baby', label: 'Baby', icon: '👶' },
     { id: 'notizen', label: 'Notizen', icon: '📝' },
     { id: 'einstellungen', label: 'Einstellungen', icon: '⚙️' },
   ];
