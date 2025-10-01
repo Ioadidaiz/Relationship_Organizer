@@ -29,8 +29,8 @@ class TaskScheduler {
     this.scheduleEveningNotification();
     
     console.log('✅ Task Scheduler erfolgreich gestartet');
-    console.log(`📅 Morgen-Benachrichtigung: ${telegramConfig.NOTIFICATION_SCHEDULES.MORNING}`);
-    console.log(`🌙 Abend-Benachrichtigung: ${telegramConfig.NOTIFICATION_SCHEDULES.EVENING}`);
+    console.log(`📅 Morgen-Benachrichtigung: ${telegramConfig.schedules.morning}`);
+    console.log(`🌙 Abend-Benachrichtigung: ${telegramConfig.schedules.evening}`);
   }
 
   /**
