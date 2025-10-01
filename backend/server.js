@@ -5,8 +5,25 @@ const path = require('path');
 const fs = require('fs');
 const db = require('./database');
 
+// Telegram Services
+const TaskScheduler = require('./services/TaskScheduler');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Telegram Scheduler initialisieren
+let taskScheduler = null;
+try {
+    taskScheduler = new TaskScheduler();
+    // Starte Scheduler nach kurzer Verzögerung um sicherzustellen dass DB bereit ist
+    setTimeout(() => {
+        if (taskScheduler) {
+            taskScheduler.start();
+        }
+    }, 3000);
+} catch (error) {
+    console.warn('⚠️ Telegram-Integration deaktiviert:', error.message);
+}
 
 // Middleware
 app.use(cors());
@@ -778,6 +795,52 @@ app.delete('/api/tasks/:id', (req, res) => {
         }
         
         res.json({ message: 'Task erfolgreich gelöscht' });
+    });
+});
+
+// ===== TELEGRAM API ENDPOINTS =====
+
+// Telegram Test-Nachricht senden
+app.post('/api/telegram/test', async (req, res) => {
+    if (!taskScheduler) {
+        return res.status(503).json({ error: 'Telegram-Service nicht verfügbar' });
+    }
+    
+    try {
+        const success = await taskScheduler.sendImmediateNotification();
+        res.json({ 
+            success, 
+            message: success ? 'Test-Nachricht erfolgreich gesendet' : 'Fehler beim Senden der Test-Nachricht' 
+        });
+    } catch (error) {
+        console.error('❌ Fehler beim Telegram-Test:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Telegram Scheduler Status abrufen
+app.get('/api/telegram/status', (req, res) => {
+    if (!taskScheduler) {
+        return res.json({ 
+            enabled: false, 
+            error: 'Telegram-Service nicht verfügbar' 
+        });
+    }
+    
+    res.json(taskScheduler.getStatus());
+});
+
+// Telegram Scheduler aktivieren/deaktivieren
+app.post('/api/telegram/toggle', (req, res) => {
+    if (!taskScheduler) {
+        return res.status(503).json({ error: 'Telegram-Service nicht verfügbar' });
+    }
+    
+    const { enabled } = req.body;
+    taskScheduler.setEnabled(enabled);
+    res.json({ 
+        enabled: taskScheduler.getStatus().enabled, 
+        message: `Telegram-Benachrichtigungen ${enabled ? 'aktiviert' : 'deaktiviert'}` 
     });
 });
 
