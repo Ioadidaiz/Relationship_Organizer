@@ -12,6 +12,8 @@ services:
       - borganizer_data:/app/backend/data
       - borganizer_uploads:/app/backend/uploads
       - borganizer_logs:/app/backend/logs
+    env_file:
+      - .env.production
     environment:
       - NODE_ENV=production
       - PORT=5000

@@ -53,7 +53,7 @@ class TaskScheduler {
    */
   scheduleMorningNotification() {
     const job = cron.schedule(
-      telegramConfig.NOTIFICATION_SCHEDULES.MORNING,
+      telegramConfig.schedules.morning,
       async () => {
         console.log('🌅 Sende Morgen-Benachrichtigung...');
         await this.sendMorningNotification();
@@ -73,7 +73,7 @@ class TaskScheduler {
    */
   scheduleEveningNotification() {
     const job = cron.schedule(
-      telegramConfig.NOTIFICATION_SCHEDULES.EVENING,
+      telegramConfig.schedules.evening,
       async () => {
         console.log('🌙 Sende Abend-Benachrichtigung...');
         await this.sendEveningNotification();
