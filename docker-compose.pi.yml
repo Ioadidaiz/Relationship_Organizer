@@ -26,11 +26,8 @@ services:
       - TELEGRAM_EVENING_SCHEDULE=${TELEGRAM_EVENING_SCHEDULE}
       - TELEGRAM_NOTIFICATIONS_ENABLED=${TELEGRAM_NOTIFICATIONS_ENABLED}
     restart: unless-stopped
-<<<<<<< HEAD
-=======
     networks:
       - borganizer-network
->>>>>>> development
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:5000/api/health"]
       interval: 30s
@@ -45,11 +42,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-<<<<<<< HEAD
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-=======
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
->>>>>>> development
       - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       borganizer:
