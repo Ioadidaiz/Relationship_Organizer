@@ -24,6 +24,12 @@ const telegramConfig = {
     // Feature Toggle
     enabled: process.env.TELEGRAM_NOTIFICATIONS_ENABLED === 'true',
     
+    // Message Settings
+    MESSAGE_SETTINGS: {
+        MAX_TASKS_PER_PROJECT: 5,
+        MAX_PROJECTS: 10
+    },
+    
     // Validation
     isValid() {
         if (!this.botToken) {
