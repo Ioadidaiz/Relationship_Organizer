@@ -1,0 +1,64 @@
+# Docker Compose für Raspberry Pi Production
+version: '3.8'
+
+services:
+  borganizer:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: borganizer-pi
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persistente Datenbank und Uploads für Pi
+      - borganizer_pi_data:/app/backend/data
+      - borganizer_pi_uploads:/app/backend/uploads
+      - borganizer_pi_logs:/app/backend/logs
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      # Telegram Configuration - aus .env.pi geladen
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - TELEGRAM_TIMEZONE=${TELEGRAM_TIMEZONE}
+      - TELEGRAM_MORNING_SCHEDULE=${TELEGRAM_MORNING_SCHEDULE}
+      - TELEGRAM_EVENING_SCHEDULE=${TELEGRAM_EVENING_SCHEDULE}
+      - TELEGRAM_NOTIFICATIONS_ENABLED=${TELEGRAM_NOTIFICATIONS_ENABLED}
+    restart: unless-stopped
+    networks:
+      - borganizer-network
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  nginx:
+    image: nginx:alpine
+    container_name: borganizer-nginx-pi
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      borganizer:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - borganizer-network
+
+networks:
+  borganizer-network:
+    driver: bridge
+
+volumes:
+  borganizer_pi_data:
+    driver: local
+  borganizer_pi_uploads:
+    driver: local
+  borganizer_pi_logs:
+    driver: local

@@ -175,7 +175,7 @@ function App() {
       formData.append('heroImage', blob, `hero-${Date.now()}.jpg`);
       
       // Upload zum Backend
-      const uploadResponse = await fetch('http://localhost:5000/api/upload-hero', {
+      const uploadResponse = await fetch('/api/upload-hero', {
         method: 'POST',
         body: formData
       });
@@ -311,7 +311,7 @@ function App() {
   const loadProjects = async () => {
     try {
       // Direkte API-Aufrufe anstatt apiService zu verwenden
-      const response = await fetch('http://localhost:5000/api/projects');
+      const response = await fetch('/api/projects');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -339,7 +339,7 @@ function App() {
         type: 'event' as const,
         daysUntil: Math.ceil((new Date(event.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
         displayImage: event.images && event.images.length > 0 
-          ? `http://localhost:5000/uploads/${event.images[0].filename}`
+          ? `/uploads/${event.images[0].filename}`
           : `/image${Math.floor(Math.random() * 4) + 1}.jpg`,
         date: event.date
       }))
@@ -510,7 +510,7 @@ function App() {
 
       if (editingProject && editingProject.id) {
         // Update Project
-        const response = await fetch(`http://localhost:5000/api/projects/${editingProject.id}`, {
+        const response = await fetch(`/api/projects/${editingProject.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -523,7 +523,7 @@ function App() {
         }
       } else {
         // Create Project
-        const response = await fetch('http://localhost:5000/api/projects', {
+        const response = await fetch('/api/projects', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -558,7 +558,7 @@ function App() {
     try {
       setIsLoading(true);
       
-      const response = await fetch(`http://localhost:5000/api/projects/${id}`, {
+      const response = await fetch(`/api/projects/${id}`, {
         method: 'DELETE',
       });
 
@@ -578,7 +578,7 @@ function App() {
   // ===== TASK HANDLER =====
   const loadTasks = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/tasks');
+      const response = await fetch('/api/tasks');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -662,7 +662,7 @@ function App() {
       };
 
       if (editingTask && editingTask.id) {
-        const response = await fetch(`http://localhost:5000/api/tasks/${editingTask.id}`, {
+        const response = await fetch(`/api/tasks/${editingTask.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -674,7 +674,7 @@ function App() {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
       } else {
-        const response = await fetch('http://localhost:5000/api/tasks', {
+        const response = await fetch('/api/tasks', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -710,7 +710,7 @@ function App() {
     try {
       setIsLoading(true);
       
-      const response = await fetch(`http://localhost:5000/api/tasks/${id}`, {
+      const response = await fetch(`/api/tasks/${id}`, {
         method: 'DELETE',
       });
 
@@ -748,7 +748,7 @@ function App() {
         throw new Error('Task hat keinen gültigen Titel');
       }
       
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      const response = await fetch(`/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1584,7 +1584,7 @@ function App() {
                         <div key={note.id || index} className="rail-card">
                           <div className="card-image">
                             <img 
-                              src={note.image_path ? getOptimizedImageUrl(`http://localhost:5000${note.image_path}`) : '/image3.jpg'} 
+                              src={note.image_path ? getOptimizedImageUrl(note.image_path) : '/image3.jpg'} 
                               alt={note.title}
                               onError={(e) => handleImageError(e, '/image3.jpg')}
                               loading="lazy" // Lazy loading für bessere Performance
@@ -1660,7 +1660,7 @@ function App() {
         const getNoteImage = (note: Note, category: string) => {
           // Verwende das spezifische Notiz-Bild falls vorhanden, sonst Kategorie-Bild
           if (note.image_path) {
-            return `http://localhost:5000${note.image_path}`;
+            return note.image_path;
           }
           return getCategoryImage(category);
         };
@@ -2750,7 +2750,7 @@ function App() {
                     <div className="current-image">
                       <label>Aktuelles Bild:</label>
                       <img 
-                        src={`http://localhost:5000${editingNote.image_path}`} 
+                        src={editingNote.image_path} 
                         alt="Aktuelles Bild" 
                         style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '4px', marginTop: '10px' }}
                       />

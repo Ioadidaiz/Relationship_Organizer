@@ -3,8 +3,8 @@ const telegramConfig = require('../config/telegram');
 
 class TelegramService {
   constructor() {
-    this.bot = new TelegramBot(telegramConfig.BOT_TOKEN, { polling: false });
-    this.chatId = telegramConfig.CHAT_ID;
+    this.bot = new TelegramBot(telegramConfig.botToken, { polling: false });
+    this.chatId = telegramConfig.chatId;
   }
 
   /**

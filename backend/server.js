@@ -807,7 +807,11 @@ app.post('/api/telegram/test', async (req, res) => {
     }
     
     try {
-        const success = await taskScheduler.sendImmediateNotification();
+        // Direkte Test-Nachricht ohne TaskSummary
+        const TelegramService = require('./services/TelegramService');
+        const telegramService = new TelegramService();
+        const success = await telegramService.sendMessage('🧪 *Test-Nachricht*\n\nDas Telegram-Feature funktioniert! ✅');
+        
         res.json({ 
             success, 
             message: success ? 'Test-Nachricht erfolgreich gesendet' : 'Fehler beim Senden der Test-Nachricht' 
