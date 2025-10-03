@@ -1,0 +1,3 @@
+# BOrganizer Automatic Database Backup
+# Läuft jeden Sonntag um 3:00 Uhr morgens
+0 3 * * 0 /home/andreas/beziehungs-organizer/scripts/backup-database.sh >> /home/andreas/beziehungs-organizer/backups/cron.log 2>&1

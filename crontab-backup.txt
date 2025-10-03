@@ -1,0 +1,12 @@
+# BOrganizer Automatic Database Backup
+# Läuft jeden Sonntag um 3:00 Uhr morgens
+# Logs werden nach /var/log/borganizer-backup.log geschrieben
+
+# Backup jeden Sonntag um 3:00 Uhr
+0 3 * * 0 /home/andreas/beziehungs-organizer/backup-database.sh
+
+# Optional: Zusätzliches tägliches Backup um 2:00 Uhr (nur für kritische Zeiten)
+# 0 2 * * * /home/andreas/beziehungs-organizer/backup-database.sh
+
+# Log-Rotation: Alte Logs löschen (älter als 30 Tage)
+0 4 * * 0 find /var/log -name "borganizer-*.log" -mtime +30 -delete
