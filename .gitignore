@@ -10,6 +10,16 @@ backend/node_modules/
 backend/package-lock.json
 backend/relationship_organizer.db
 backend/uploads/
+backend/data/
+backend/backups/
+
+# Database files (alle Varianten)
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
 
 # testing
 /coverage
@@ -44,3 +54,8 @@ certs/
 *.pem
 *.key
 *.crt
+
+# Temporary files & scripts
+quick-restore.ps1
+restore-*.ps1
+temp-*
