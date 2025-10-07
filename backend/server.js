@@ -848,6 +848,80 @@ app.post('/api/telegram/toggle', (req, res) => {
     });
 });
 
+// Test Smart Morning Reminder
+app.post('/api/telegram/test-morning', async (req, res) => {
+    if (!taskScheduler) {
+        return res.status(503).json({ error: 'Telegram-Service nicht verfügbar' });
+    }
+    
+    try {
+        const TaskSummaryService = require('./services/TaskSummaryService');
+        const TelegramService = require('./services/TelegramService');
+        
+        const taskSummaryService = new TaskSummaryService();
+        const telegramService = new TelegramService();
+        
+        const morningReminder = await taskSummaryService.generateMorningReminder();
+        const success = await telegramService.sendMessage(morningReminder);
+        
+        res.json({ 
+            success, 
+            message: success ? 'Morning Reminder erfolgreich gesendet' : 'Fehler beim Senden',
+            preview: morningReminder.substring(0, 100) + '...' 
+        });
+    } catch (error) {
+        console.error('❌ Fehler beim Morning Reminder Test:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Test Smart Evening Reminder
+app.post('/api/telegram/test-evening', async (req, res) => {
+    if (!taskScheduler) {
+        return res.status(503).json({ error: 'Telegram-Service nicht verfügbar' });
+    }
+    
+    try {
+        const TaskSummaryService = require('./services/TaskSummaryService');
+        const TelegramService = require('./services/TelegramService');
+        
+        const taskSummaryService = new TaskSummaryService();
+        const telegramService = new TelegramService();
+        
+        const eveningReminder = await taskSummaryService.generateEveningReminder();
+        const success = await telegramService.sendMessage(eveningReminder);
+        
+        res.json({ 
+            success, 
+            message: success ? 'Evening Reminder erfolgreich gesendet' : 'Fehler beim Senden',
+            preview: eveningReminder.substring(0, 100) + '...' 
+        });
+    } catch (error) {
+        console.error('❌ Fehler beim Evening Reminder Test:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Test Smart Scheduler direkt
+app.post('/api/telegram/test-scheduler', async (req, res) => {
+    if (!taskScheduler) {
+        return res.status(503).json({ error: 'Telegram-Service nicht verfügbar' });
+    }
+    
+    try {
+        // Direkte Verwendung der Scheduler-Methoden
+        await taskScheduler.sendMorningNotification();
+        
+        res.json({ 
+            success: true, 
+            message: 'Scheduler Morning Notification erfolgreich ausgeführt' 
+        });
+    } catch (error) {
+        console.error('❌ Fehler beim Scheduler-Test:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Serve static files from React build in production (MUST be after all API routes)
 if (process.env.NODE_ENV === 'production') {
     const buildPath = path.join(__dirname, '../build');
