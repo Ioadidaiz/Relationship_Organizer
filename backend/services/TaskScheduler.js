@@ -93,7 +93,7 @@ class TaskScheduler {
    */
   async sendMorningNotification() {
     try {
-      const summary = await this.taskSummaryService.generateTimeSpecificSummary('morning');
+      const summary = await this.taskSummaryService.generateMorningReminder();
       const success = await this.telegramService.sendTaskSummary(summary, 'morning');
       
       if (success) {
@@ -112,7 +112,7 @@ class TaskScheduler {
    */
   async sendEveningNotification() {
     try {
-      const summary = await this.taskSummaryService.generateTimeSpecificSummary('evening');
+      const summary = await this.taskSummaryService.generateEveningReminder();
       const success = await this.telegramService.sendTaskSummary(summary, 'evening');
       
       if (success) {
@@ -184,8 +184,8 @@ class TaskScheduler {
    */
   async sendImmediateNotification() {
     console.log('📤 Sende sofortige Test-Benachrichtigung...');
-    const summary = await this.taskSummaryService.generateTaskSummary();
-    return await this.telegramService.sendTaskSummary(summary, 'morning');
+    const summary = await this.taskSummaryService.generateMorningReminder();
+    return await this.telegramService.sendTaskSummary(summary, 'test');
   }
 }
 
