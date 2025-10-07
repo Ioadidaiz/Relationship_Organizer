@@ -330,19 +330,54 @@ function App() {
     
     return events
       .filter(event => {
-        const eventDate = new Date(event.date);
-        eventDate.setHours(0, 0, 0, 0);
-        return eventDate >= today;
+        const eventStartDate = new Date(event.date);
+        eventStartDate.setHours(0, 0, 0, 0);
+        
+        // Für mehrtägige Events: prüfe ob heute zwischen Start- und Enddatum liegt
+        if (event.end_date && event.end_date !== event.date) {
+          const eventEndDate = new Date(event.end_date);
+          eventEndDate.setHours(0, 0, 0, 0);
+          // Event ist relevant wenn heute <= Enddatum ist (auch für laufende Events)
+          return today <= eventEndDate;
+        }
+        
+        // Für eintägige Events: prüfe ob Startdatum >= heute ist
+        return eventStartDate >= today;
       })
-      .map(event => ({
-        ...event,
-        type: 'event' as const,
-        daysUntil: Math.ceil((new Date(event.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
-        displayImage: event.images && event.images.length > 0 
-          ? `/uploads/${event.images[0].filename}`
-          : `/image${Math.floor(Math.random() * 4) + 1}.jpg`,
-        date: event.date
-      }))
+      .map(event => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const eventStartDate = new Date(event.date);
+        eventStartDate.setHours(0, 0, 0, 0);
+        
+        let daysUntil;
+        // Für mehrtägige Events: berechne Tage bis zum Ende, wenn Event bereits läuft
+        if (event.end_date && event.end_date !== event.date) {
+          const eventEndDate = new Date(event.end_date);
+          eventEndDate.setHours(0, 0, 0, 0);
+          
+          if (today >= eventStartDate && today <= eventEndDate) {
+            // Event läuft gerade: zeige Tage bis zum Ende
+            daysUntil = Math.ceil((eventEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          } else {
+            // Event startet in der Zukunft: zeige Tage bis zum Start
+            daysUntil = Math.ceil((eventStartDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          }
+        } else {
+          // Eintägiges Event: zeige Tage bis zum Start
+          daysUntil = Math.ceil((eventStartDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        }
+        
+        return {
+          ...event,
+          type: 'event' as const,
+          daysUntil: daysUntil,
+          displayImage: event.images && event.images.length > 0 
+            ? `/uploads/${event.images[0].filename}`
+            : `/image${Math.floor(Math.random() * 4) + 1}.jpg`,
+          date: event.date
+        };
+      })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 
@@ -364,7 +399,25 @@ function App() {
   };
 
   // Formatiere die Tage bis zum Event
-  const formatDaysUntil = (days: number) => {
+  const formatDaysUntil = (days: number, event?: any) => {
+    // Für laufende mehrtägige Events
+    if (event && event.end_date && event.end_date !== event.date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const eventStartDate = new Date(event.date);
+      eventStartDate.setHours(0, 0, 0, 0);
+      const eventEndDate = new Date(event.end_date);
+      eventEndDate.setHours(0, 0, 0, 0);
+      
+      if (today >= eventStartDate && today <= eventEndDate) {
+        // Event läuft gerade
+        if (days === 0) return 'Endet heute';
+        if (days === 1) return 'Endet morgen';
+        return `Endet in ${days} Tag${days === 1 ? '' : 'en'}`;
+      }
+    }
+    
+    // Standard-Formatierung für zukünftige Events
     if (days === 0) return 'Heute';
     if (days === 1) return 'Morgen';
     if (days < 7) return `In ${days} Tagen`;
@@ -1461,7 +1514,7 @@ function App() {
                             </div>
                             <div className="card-content">
                               <h4>{event.title}</h4>
-                              <p>{formatDaysUntil(event.daysUntil)}</p>
+                              <p>{formatDaysUntil(event.daysUntil, event)}</p>
                               <small>{new Date(event.date).toLocaleDateString('de-DE', { 
                                 day: '2-digit', 
                                 month: 'short',
@@ -1492,7 +1545,7 @@ function App() {
                                 {event.description || 'Keine Beschreibung verfügbar'}
                               </p>
                               <div className="event-meta">
-                                <small>{formatDaysUntil(event.daysUntil)}</small>
+                                <small>{formatDaysUntil(event.daysUntil, event)}</small>
                                 <small>{new Date(event.date).toLocaleDateString('de-DE', { 
                                   day: '2-digit', 
                                   month: 'short',
