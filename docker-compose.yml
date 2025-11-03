@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
       target: production
     container_name: borganizer-app
+    user: "1001:1001"  # Ensure container runs with correct permissions
     ports:
       - "5000:5000"
     volumes:
