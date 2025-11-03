@@ -65,6 +65,17 @@ const upload = multer({
 // Statische Dateien für Bilder
 app.use('/uploads', express.static(uploadsDir));
 
+// Hilfsfunktion zum Parsen von Bild-Strings
+function parseImages(filenames, paths) {
+    if (!filenames || !paths) return [];
+    const filenameArray = filenames.split(',');
+    const pathArray = paths.split(',');
+    return filenameArray.map((filename, index) => ({
+        filename: filename,
+        path: pathArray[index] || ''
+    }));
+}
+
 // Health Check für Docker/Production
 app.get('/api/health', (req, res) => {
     res.status(200).json({ 

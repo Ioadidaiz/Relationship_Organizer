@@ -646,6 +646,12 @@ function App() {
     }
   };
 
+  // Hilfsfunktion: Projektname anhand project_id finden
+  const getProjectName = (projectId: number): string => {
+    const project = projects.find(p => p.id === projectId);
+    return project ? project.title : 'Kein Projekt';
+  };
+
   // Funktion zum Anzeigen von Beschreibung und Antwort
   const renderTaskContent = (task: Task) => {
     // Prüfe erst das separate result Feld (neues Format)
@@ -1582,35 +1588,75 @@ function App() {
                     getUpcomingTasks().map((task, index) => (
                       <div 
                         key={task.id || index} 
-                        className={`rail-card ampel-${task.status || 'todo'}`}
+                        className={`rail-card flip-card ampel-${task.status || 'todo'}`}
                         onClick={() => handleTaskClick(task)}
                         style={{ cursor: 'pointer' }}
                       >
-                        <div className="card-image">
-                          <img 
-                            src={task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"}
-                            alt={task.title}
-                            onError={(e) => handleImageError(e, '/image2.jpg')}
-                            loading="lazy"
-                            style={{
-                              imageRendering: 'auto',
-                              filter: 'brightness(1.05) contrast(1.02)'
-                            }}
-                          />
-                          <div className={`status-indicator status-${task.status || 'todo'}`}></div>
-                        </div>
-                        <div className="card-content">
-                          <h4>{task.title}</h4>
-                          <p>{task.result && task.result.trim() ? task.result.substring(0, 50) + (task.result.length > 50 ? '...' : '') : 'Noch keine Lösung'}</p>
-                          <small>
-                            {task.due_date ? 
-                              `Bis: ${new Date(task.due_date).toLocaleDateString('de-DE', { 
-                                day: '2-digit', 
-                                month: 'short'
-                              })}` : 
-                              `Status: ${task.status === 'todo' ? 'Zu erledigen' : task.status === 'in-progress' ? 'In Bearbeitung' : 'Erledigt'}`
-                            }
-                          </small>
+                        <div className="flip-card-inner">
+                          {/* Vorderseite */}
+                          <div className="flip-card-front">
+                            <div className="card-image">
+                              <img 
+                                src={task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"}
+                                alt={task.title}
+                                onError={(e) => handleImageError(e, '/image2.jpg')}
+                                loading="lazy"
+                                style={{
+                                  imageRendering: 'auto',
+                                  filter: 'brightness(1.05) contrast(1.02)'
+                                }}
+                              />
+                              <div className={`status-indicator status-${task.status || 'todo'}`}></div>
+                            </div>
+                            <div className="card-content">
+                              <h4>{task.title}</h4>
+                              <p className="task-project">{getProjectName(task.project_id)}</p>
+                              <small>
+                                {task.due_date ? 
+                                  `Bis: ${new Date(task.due_date).toLocaleDateString('de-DE', { 
+                                    day: '2-digit', 
+                                    month: 'short'
+                                  })}` : 
+                                  `Status: ${task.status === 'todo' ? 'Zu erledigen' : task.status === 'in-progress' ? 'In Bearbeitung' : 'Erledigt'}`
+                                }
+                              </small>
+                            </div>
+                          </div>
+                          
+                          {/* Rückseite */}
+                          <div className="flip-card-back">
+                            <div className="card-image">
+                              <img 
+                                src={task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"}
+                                alt={task.title}
+                                onError={(e) => handleImageError(e, '/image2.jpg')}
+                                loading="lazy"
+                                style={{
+                                  imageRendering: 'auto',
+                                  filter: 'brightness(1.05) contrast(1.02)'
+                                }}
+                              />
+                              <div className="image-overlay"></div>
+                            </div>
+                            <div className="card-content card-content-back">
+                              <h4>{task.title}</h4>
+                              <p className="task-description">
+                                {task.description || 'Keine Beschreibung verfügbar'}
+                              </p>
+                              <div className="task-meta">
+                                <small>{task.result && task.result.trim() ? task.result : 'Noch keine Lösung'}</small>
+                                <small>
+                                  {task.due_date ? 
+                                    `Bis: ${new Date(task.due_date).toLocaleDateString('de-DE', { 
+                                      day: '2-digit', 
+                                      month: 'short'
+                                    })}` : 
+                                    `Status: ${task.status === 'todo' ? 'Zu erledigen' : task.status === 'in-progress' ? 'In Bearbeitung' : 'Erledigt'}`
+                                  }
+                                </small>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))
