@@ -3303,3 +3303,238 @@ body:has(.panorama-header-fullwidth) .content-area {
   font-size: 11px;
   font-weight: 500;
 }
+
+/* ===== BABY SECTION ===== */
+
+.baby-section {
+  margin-bottom: 40px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h2 {
+  color: #e5e5e5;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.add-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+}
+
+/* Savings Card */
+.savings-card {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.savings-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.savings-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.current-amount {
+  color: #667eea;
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.target-amount {
+  color: #94a3b8;
+  font-size: 1rem;
+}
+
+.savings-percentage {
+  background: rgba(102, 126, 234, 0.2);
+  color: #667eea;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Progress Bar */
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+}
+
+.savings-remaining {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+/* Baby Items Grid */
+.baby-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.baby-item-card {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.baby-item-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  border-color: rgba(102, 126, 234, 0.5);
+}
+
+.baby-item-image {
+  width: 100%;
+  height: 180px;
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.baby-item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.baby-item-placeholder {
+  font-size: 4rem;
+  opacity: 0.3;
+}
+
+.baby-item-content {
+  padding: 16px;
+}
+
+.baby-item-content h3 {
+  color: #e5e5e5;
+  font-size: 1.2rem;
+  margin: 0 0 8px 0;
+}
+
+.baby-item-notes {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 12px 0;
+  min-height: 40px;
+}
+
+.baby-item-cost {
+  color: #667eea;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.baby-item-delete {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(239, 68, 68, 0.9);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.3s ease;
+  font-size: 1.2rem;
+}
+
+.baby-item-card:hover .baby-item-delete {
+  opacity: 1;
+}
+
+.baby-item-delete:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+/* Baby Items Summary */
+.baby-items-summary {
+  background: rgba(102, 126, 234, 0.1);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 12px;
+  padding: 16px 24px;
+  text-align: right;
+  color: #e5e5e5;
+  font-size: 1.2rem;
+}
+
+.baby-items-summary strong {
+  color: #667eea;
+}
+
+/* Empty State */
+.baby-items-grid .empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+}
+
+.baby-items-grid .empty-state p {
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+}
+
+.baby-items-grid .empty-state small {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}

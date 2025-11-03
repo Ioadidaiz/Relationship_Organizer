@@ -111,6 +111,26 @@ function App() {
     color: '#4a9eff'
   });
 
+  // Baby States (Frontend only - kein Backend noch)
+  const [babySavings, setBabySavings] = useState(0); // Aktueller Sparstand
+  const [babyTarget] = useState(5000); // Sparziel
+  const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
+  const [moneyToAdd, setMoneyToAdd] = useState('');
+  const [babyItems, setBabyItems] = useState<Array<{
+    id: number;
+    title: string;
+    notes: string;
+    cost: number;
+    image?: string;
+  }>>([]);
+  const [showBabyItemModal, setShowBabyItemModal] = useState(false);
+  const [newBabyItem, setNewBabyItem] = useState({
+    title: '',
+    notes: '',
+    cost: 0,
+    image: ''
+  });
+
   // Lade Events und Notizen beim Start
   useEffect(() => {
     loadEvents();
@@ -2322,6 +2342,219 @@ function App() {
             )}
           </div>
         );
+      
+      case 'baby':
+        return (
+          <div className="content">
+            <h1>👶 Baby Planung</h1>
+            
+            {/* Finanzplan Section */}
+            <div className="baby-section">
+              <div className="section-header">
+                <h2>💰 Finanzplan - Erstausstattung</h2>
+                <button 
+                  className="add-btn"
+                  onClick={() => setShowAddMoneyModal(true)}
+                >
+                  + Geld hinzufügen
+                </button>
+              </div>
+              
+              <div className="savings-card">
+                <div className="savings-info">
+                  <div className="savings-amount">
+                    <span className="current-amount">{babySavings.toFixed(2)}€</span>
+                    <span className="target-amount">von {babyTarget.toFixed(2)}€</span>
+                  </div>
+                  <div className="savings-percentage">
+                    {((babySavings / babyTarget) * 100).toFixed(1)}% erreicht
+                  </div>
+                </div>
+                
+                <div className="progress-bar-container">
+                  <div 
+                    className="progress-bar-fill"
+                    style={{ width: `${Math.min((babySavings / babyTarget) * 100, 100)}%` }}
+                  ></div>
+                </div>
+                
+                <div className="savings-remaining">
+                  Noch {Math.max(babyTarget - babySavings, 0).toFixed(2)}€ bis zum Ziel
+                </div>
+              </div>
+            </div>
+
+            {/* Einkaufsliste Section */}
+            <div className="baby-section">
+              <div className="section-header">
+                <h2>🛒 Einkaufsliste</h2>
+                <button 
+                  className="add-btn"
+                  onClick={() => setShowBabyItemModal(true)}
+                >
+                  + Artikel hinzufügen
+                </button>
+              </div>
+              
+              <div className="baby-items-grid">
+                {babyItems.length > 0 ? (
+                  babyItems.map((item) => (
+                    <div key={item.id} className="baby-item-card">
+                      <div className="baby-item-image">
+                        {item.image ? (
+                          <img src={item.image} alt={item.title} />
+                        ) : (
+                          <div className="baby-item-placeholder">🍼</div>
+                        )}
+                      </div>
+                      <div className="baby-item-content">
+                        <h3>{item.title}</h3>
+                        <p className="baby-item-notes">{item.notes}</p>
+                        <div className="baby-item-cost">{item.cost.toFixed(2)}€</div>
+                      </div>
+                      <button 
+                        className="baby-item-delete"
+                        onClick={() => setBabyItems(babyItems.filter(i => i.id !== item.id))}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <p>Noch keine Artikel hinzugefügt</p>
+                    <small>Klicke auf "+ Artikel hinzufügen" um zu starten</small>
+                  </div>
+                )}
+              </div>
+              
+              {babyItems.length > 0 && (
+                <div className="baby-items-summary">
+                  <strong>Gesamtkosten:</strong> {babyItems.reduce((sum, item) => sum + item.cost, 0).toFixed(2)}€
+                </div>
+              )}
+            </div>
+
+            {/* Geld hinzufügen Modal */}
+            {showAddMoneyModal && (
+              <div className="modal-overlay" onClick={() => setShowAddMoneyModal(false)}>
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Geld zur Rücklage hinzufügen</h2>
+                    <button className="close-btn" onClick={() => setShowAddMoneyModal(false)}>✕</button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="form-group">
+                      <label>Betrag (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={moneyToAdd}
+                        onChange={(e) => setMoneyToAdd(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="modal-actions">
+                    <button className="cancel-btn" onClick={() => setShowAddMoneyModal(false)}>
+                      Abbrechen
+                    </button>
+                    <button 
+                      className="save-btn"
+                      onClick={() => {
+                        const amount = parseFloat(moneyToAdd);
+                        if (!isNaN(amount) && amount > 0) {
+                          setBabySavings(prev => prev + amount);
+                          setMoneyToAdd('');
+                          setShowAddMoneyModal(false);
+                        }
+                      }}
+                    >
+                      Hinzufügen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Baby Artikel Modal */}
+            {showBabyItemModal && (
+              <div className="modal-overlay" onClick={() => setShowBabyItemModal(false)}>
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Artikel hinzufügen</h2>
+                    <button className="close-btn" onClick={() => setShowBabyItemModal(false)}>✕</button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="form-group">
+                      <label>Artikel</label>
+                      <input
+                        type="text"
+                        placeholder="z.B. Kinderwagen, Wickeltisch..."
+                        value={newBabyItem.title}
+                        onChange={(e) => setNewBabyItem({...newBabyItem, title: e.target.value})}
+                        autoFocus
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Notizen</label>
+                      <textarea
+                        placeholder="Details, Marke, wo kaufen..."
+                        value={newBabyItem.notes}
+                        onChange={(e) => setNewBabyItem({...newBabyItem, notes: e.target.value})}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Kosten (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={newBabyItem.cost || ''}
+                        onChange={(e) => setNewBabyItem({...newBabyItem, cost: parseFloat(e.target.value) || 0})}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Bild-URL (optional)</label>
+                      <input
+                        type="text"
+                        placeholder="https://..."
+                        value={newBabyItem.image}
+                        onChange={(e) => setNewBabyItem({...newBabyItem, image: e.target.value})}
+                      />
+                      <small>Vorerst nur URL-Eingabe, später mit Upload</small>
+                    </div>
+                  </div>
+                  <div className="modal-actions">
+                    <button className="cancel-btn" onClick={() => setShowBabyItemModal(false)}>
+                      Abbrechen
+                    </button>
+                    <button 
+                      className="save-btn"
+                      onClick={() => {
+                        if (newBabyItem.title.trim()) {
+                          setBabyItems(prev => [...prev, {
+                            ...newBabyItem,
+                            id: Date.now()
+                          }]);
+                          setNewBabyItem({ title: '', notes: '', cost: 0, image: '' });
+                          setShowBabyItemModal(false);
+                        }
+                      }}
+                    >
+                      Hinzufügen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      
       default:
         return (
           <div className="content">
