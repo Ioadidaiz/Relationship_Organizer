@@ -10,7 +10,16 @@ if (!fs.existsSync(dataDir)) {
 
 // Erstelle oder öffne die SQLite-Datenbank im data-Verzeichnis
 const dbPath = path.join(dataDir, 'relationship_organizer.db');
-const db = new sqlite3.Database(dbPath);
+console.log('🗄️ Datenbank-Pfad:', dbPath);
+
+// Öffne Datenbank mit explizitem READWRITE Modus
+const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+    if (err) {
+        console.error('❌ Fehler beim Öffnen der Datenbank:', err.message);
+    } else {
+        console.log('✅ Datenbank erfolgreich geöffnet im READWRITE Modus');
+    }
+});
 
 // Tabellen erstellen
 db.serialize(() => {
