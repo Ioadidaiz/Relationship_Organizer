@@ -712,7 +712,12 @@ app.get('/api/tasks', (req, res) => {
             res.status(500).json({ error: err.message });
             return;
         }
-        res.json(rows);
+        // Bilder als Array für jede Task hinzufügen
+        const tasksWithImages = rows.map(task => ({
+            ...task,
+            images: parseImages(task.image_filenames, task.image_paths)
+        }));
+        res.json(tasksWithImages);
     });
 });
 
@@ -724,10 +729,10 @@ app.post('/api/tasks', (req, res) => {
         return res.status(400).json({ error: 'Titel und Projekt-ID sind erforderlich' });
     }
     
-    const sql = `INSERT INTO tasks (title, description, status, project_id, due_date, result) 
-                 VALUES (?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO tasks (title, description, status, project_id, due_date, result, image_filenames, image_paths) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
     
-    db.run(sql, [title, description, status || 'todo', project_id, due_date, result], function(err) {
+    db.run(sql, [title, description, status || 'todo', project_id, due_date, result, null, null], function(err) {
         if (err) {
             console.error('Fehler beim Erstellen der Task:', err);
             res.status(500).json({ error: err.message });
@@ -740,6 +745,10 @@ app.post('/api/tasks', (req, res) => {
                 console.error('Fehler beim Abrufen der erstellten Task:', err);
                 res.status(500).json({ error: err.message });
                 return;
+            }
+            // Bilder als Array zurückgeben
+            if (row) {
+                row.images = parseImages(row.image_filenames, row.image_paths);
             }
             res.status(201).json(row);
         });
@@ -795,6 +804,97 @@ app.delete('/api/tasks/:id', (req, res) => {
         }
         
         res.json({ message: 'Task erfolgreich gelöscht' });
+    });
+});
+
+// POST Task Bild hochladen
+app.post('/api/tasks/:id/images', upload.single('image'), (req, res) => {
+    const taskId = req.params.id;
+    
+    if (!req.file) {
+        return res.status(400).json({ error: 'Keine Datei hochgeladen' });
+    }
+    
+    const filename = req.file.filename;
+    const filepath = `/uploads/${filename}`;
+    
+    // Lade aktuelle Bilder
+    db.get('SELECT image_filenames, image_paths FROM tasks WHERE id = ?', [taskId], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (!row) {
+            return res.status(404).json({ error: 'Task nicht gefunden' });
+        }
+        
+        // Füge neues Bild hinzu
+        let filenames = row.image_filenames ? row.image_filenames.split(',') : [];
+        let paths = row.image_paths ? row.image_paths.split(',') : [];
+        
+        filenames.push(filename);
+        paths.push(filepath);
+        
+        // Update Task mit neuen Bildern
+        const sql = 'UPDATE tasks SET image_filenames = ?, image_paths = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+        db.run(sql, [filenames.join(','), paths.join(','), taskId], function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            res.json({
+                message: 'Bild erfolgreich hochgeladen',
+                filename: filename,
+                path: filepath
+            });
+        });
+    });
+});
+
+// DELETE Task Bild löschen
+app.delete('/api/tasks/:id/images/:filename', (req, res) => {
+    const { id, filename } = req.params;
+    
+    db.get('SELECT image_filenames, image_paths FROM tasks WHERE id = ?', [id], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (!row) {
+            return res.status(404).json({ error: 'Task nicht gefunden' });
+        }
+        
+        let filenames = row.image_filenames ? row.image_filenames.split(',') : [];
+        let paths = row.image_paths ? row.image_paths.split(',') : [];
+        
+        const index = filenames.indexOf(filename);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Bild nicht gefunden' });
+        }
+        
+        // Entferne Bild aus Arrays
+        filenames.splice(index, 1);
+        paths.splice(index, 1);
+        
+        // Lösche Datei vom Server
+        const fs = require('fs');
+        const filePath = path.join(uploadDir, filename);
+        fs.unlink(filePath, (err) => {
+            if (err) console.error('Fehler beim Löschen der Datei:', err);
+        });
+        
+        // Update Task
+        const sql = 'UPDATE tasks SET image_filenames = ?, image_paths = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+        const newFilenames = filenames.length > 0 ? filenames.join(',') : null;
+        const newPaths = paths.length > 0 ? paths.join(',') : null;
+        
+        db.run(sql, [newFilenames, newPaths, id], function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            res.json({ message: 'Bild erfolgreich gelöscht' });
+        });
     });
 });
 

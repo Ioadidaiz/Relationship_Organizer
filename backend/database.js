@@ -133,6 +133,20 @@ db.serialize(() => {
             console.error('Fehler beim Hinzufügen der result Spalte:', err);
         }
     });
+
+    // Füge image_filenames Spalte hinzu falls sie nicht existiert (für Bilder)
+    db.run(`ALTER TABLE tasks ADD COLUMN image_filenames TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error('Fehler beim Hinzufügen der image_filenames Spalte:', err);
+        }
+    });
+
+    // Füge image_paths Spalte hinzu falls sie nicht existiert (für Bildpfade)
+    db.run(`ALTER TABLE tasks ADD COLUMN image_paths TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error('Fehler beim Hinzufügen der image_paths Spalte:', err);
+        }
+    });
 });
 
 module.exports = db;

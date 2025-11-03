@@ -27,6 +27,9 @@ interface Task {
   result?: string;
   created_at: string;
   updated_at: string;
+  image_filenames?: string;
+  image_paths?: string;
+  images?: { filename: string; path: string }[];
 }
 
 function App() {
@@ -1585,7 +1588,7 @@ function App() {
                       >
                         <div className="card-image">
                           <img 
-                            src="/image2.jpg"
+                            src={task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"}
                             alt={task.title}
                             onError={(e) => handleImageError(e, '/image2.jpg')}
                             loading="lazy"
@@ -2630,6 +2633,83 @@ function App() {
                         </small>
                       </div>
                     )}
+                    
+                    {/* Bild-Upload für Aufgaben */}
+                    {editingTask && (
+                      <div className="form-group">
+                        <label>Bilder</label>
+                        <div className="image-upload-section">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file && editingTask.id) {
+                                const formData = new FormData();
+                                formData.append('image', file);
+                                
+                                try {
+                                  const response = await fetch(`/api/tasks/${editingTask.id}/images`, {
+                                    method: 'POST',
+                                    body: formData
+                                  });
+                                  
+                                  if (response.ok) {
+                                    // Reload tasks to get updated image list
+                                    await loadTasks();
+                                    // Update editingTask with new image
+                                    const updatedTask = tasks.find(t => t.id === editingTask.id);
+                                    if (updatedTask) {
+                                      setEditingTask(updatedTask);
+                                    }
+                                  }
+                                } catch (error) {
+                                  console.error('Fehler beim Hochladen:', error);
+                                }
+                                
+                                // Reset input
+                                e.target.value = '';
+                              }
+                            }}
+                            className="image-upload-input"
+                          />
+                          
+                          {editingTask.images && editingTask.images.length > 0 && (
+                            <div className="uploaded-images">
+                              {editingTask.images.map((image, index) => (
+                                <div key={index} className="uploaded-image">
+                                  <img src={image.path} alt={`Task Bild ${index + 1}`} />
+                                  <button
+                                    type="button"
+                                    className="delete-image-btn"
+                                    onClick={async () => {
+                                      try {
+                                        const response = await fetch(`/api/tasks/${editingTask.id}/images/${image.filename}`, {
+                                          method: 'DELETE'
+                                        });
+                                        
+                                        if (response.ok) {
+                                          await loadTasks();
+                                          const updatedTask = tasks.find(t => t.id === editingTask.id);
+                                          if (updatedTask) {
+                                            setEditingTask(updatedTask);
+                                          }
+                                        }
+                                      } catch (error) {
+                                        console.error('Fehler beim Löschen:', error);
+                                      }
+                                    }}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="task-form-actions">
                       <button 
                         type="button"
