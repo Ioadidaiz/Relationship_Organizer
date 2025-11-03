@@ -777,34 +777,44 @@ body:has(.panorama-header-fullwidth) .content-area {
 
 /* Ampel-Rahmen für Rail-Karten */
 .rail-card.ampel-todo {
-  border: 2px solid #dc2626;
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
 
 .rail-card.ampel-in-progress {
-  border: 2px solid #f59e0b;
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
 .rail-card.ampel-done {
-  border: 2px solid #16a34a;
   box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+/* Ampel-Borders auf flip-card Vorder- und Rückseite */
+.rail-card.ampel-todo .flip-card-front,
+.rail-card.ampel-todo .flip-card-back {
+  border: 2px solid #dc2626;
+}
+
+.rail-card.ampel-in-progress .flip-card-front,
+.rail-card.ampel-in-progress .flip-card-back {
+  border: 2px solid #f59e0b;
+}
+
+.rail-card.ampel-done .flip-card-front,
+.rail-card.ampel-done .flip-card-back {
+  border: 2px solid #16a34a;
 }
 
 /* Hover-Effekt für Ampel-Karten */
 .rail-card.ampel-todo:hover {
   box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4);
-  transform: translateY(-4px);
 }
 
 .rail-card.ampel-in-progress:hover {
   box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
-  transform: translateY(-4px);
 }
 
 .rail-card.ampel-done:hover {
   box-shadow: 0 8px 20px rgba(22, 163, 74, 0.4);
-  transform: translateY(-4px);
 }
 
 .card-content p {
