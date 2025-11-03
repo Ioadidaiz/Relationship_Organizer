@@ -1509,7 +1509,14 @@ function App() {
                         <div className="flip-card-inner">
                           {/* Vorderseite */}
                           <div className="flip-card-front">
-                            <div className="card-image">
+                            <div 
+                              className="card-image"
+                              style={{
+                                backgroundImage: `url(${getOptimizedImageUrl(event.displayImage)})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center'
+                              }}
+                            >
                               <img 
                                 src={getOptimizedImageUrl(event.displayImage)} 
                                 alt={event.title}
@@ -1535,7 +1542,14 @@ function App() {
                           
                           {/* Rückseite */}
                           <div className="flip-card-back">
-                            <div className="card-image">
+                            <div 
+                              className="card-image"
+                              style={{
+                                backgroundImage: `url(${getOptimizedImageUrl(event.displayImage)})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center'
+                              }}
+                            >
                               <img 
                                 src={getOptimizedImageUrl(event.displayImage)} 
                                 alt={event.title}
@@ -1595,7 +1609,14 @@ function App() {
                         <div className="flip-card-inner">
                           {/* Vorderseite */}
                           <div className="flip-card-front">
-                            <div className="card-image">
+                            <div 
+                              className="card-image"
+                              style={{
+                                backgroundImage: `url(${task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center'
+                              }}
+                            >
                               <img 
                                 src={task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"}
                                 alt={task.title}
@@ -1625,7 +1646,14 @@ function App() {
                           
                           {/* Rückseite */}
                           <div className="flip-card-back">
-                            <div className="card-image">
+                            <div 
+                              className="card-image"
+                              style={{
+                                backgroundImage: `url(${task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center'
+                              }}
+                            >
                               <img 
                                 src={task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"}
                                 alt={task.title}
@@ -1684,7 +1712,14 @@ function App() {
                       // Alle Notizen anzeigen - horizontal scrollbar
                       .map((note, index) => (
                         <div key={note.id || index} className="rail-card">
-                          <div className="card-image">
+                          <div 
+                            className="card-image"
+                            style={{
+                              backgroundImage: `url(${note.image_path ? getOptimizedImageUrl(note.image_path) : '/image3.jpg'})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center'
+                            }}
+                          >
                             <img 
                               src={note.image_path ? getOptimizedImageUrl(note.image_path) : '/image3.jpg'} 
                               alt={note.title}
