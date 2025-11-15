@@ -1033,6 +1033,250 @@ app.post('/api/telegram/test-scheduler', async (req, res) => {
     }
 });
 
+// ===== BABY API ENDPOINTS =====
+
+// GET Baby Savings - Aktuellen Sparstand abrufen
+app.get('/api/baby/savings', (req, res) => {
+    db.get('SELECT * FROM baby_savings ORDER BY id DESC LIMIT 1', (err, row) => {
+        if (err) {
+            console.error('Fehler beim Abrufen der Baby Savings:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        
+        // Falls noch kein Eintrag existiert, initialisiere mit Standardwerten
+        if (!row) {
+            db.run('INSERT INTO baby_savings (amount, target) VALUES (0, 5000)', function(err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                return res.json({ id: this.lastID, amount: 0, target: 5000 });
+            });
+        } else {
+            res.json(row);
+        }
+    });
+});
+
+// POST Baby Savings - Geld hinzufügen
+app.post('/api/baby/savings/add', (req, res) => {
+    const { amount } = req.body;
+    
+    if (!amount || isNaN(amount) || amount <= 0) {
+        return res.status(400).json({ error: 'Gültiger Betrag erforderlich' });
+    }
+    
+    // Hole aktuellen Stand
+    db.get('SELECT * FROM baby_savings ORDER BY id DESC LIMIT 1', (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        const currentAmount = row ? row.amount : 0;
+        const newAmount = currentAmount + parseFloat(amount);
+        const target = row ? row.target : 5000;
+        
+        // Update oder Insert
+        if (row) {
+            db.run('UPDATE baby_savings SET amount = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
+                [newAmount, row.id], function(err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ id: row.id, amount: newAmount, target, added: amount });
+            });
+        } else {
+            db.run('INSERT INTO baby_savings (amount, target) VALUES (?, ?)', 
+                [newAmount, target], function(err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ id: this.lastID, amount: newAmount, target, added: amount });
+            });
+        }
+    });
+});
+
+// PUT Baby Savings - Sparstand direkt setzen
+app.put('/api/baby/savings', (req, res) => {
+    const { amount, target } = req.body;
+    
+    db.get('SELECT * FROM baby_savings ORDER BY id DESC LIMIT 1', (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (row) {
+            db.run('UPDATE baby_savings SET amount = ?, target = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [amount ?? row.amount, target ?? row.target, row.id], function(err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ id: row.id, amount: amount ?? row.amount, target: target ?? row.target });
+            });
+        } else {
+            db.run('INSERT INTO baby_savings (amount, target) VALUES (?, ?)',
+                [amount ?? 0, target ?? 5000], function(err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ id: this.lastID, amount: amount ?? 0, target: target ?? 5000 });
+            });
+        }
+    });
+});
+
+// GET alle Baby Items
+app.get('/api/baby/items', (req, res) => {
+    db.all('SELECT * FROM baby_items ORDER BY created_at DESC', (err, rows) => {
+        if (err) {
+            console.error('Fehler beim Abrufen der Baby Items:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+// POST neues Baby Item erstellen
+app.post('/api/baby/items', (req, res) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) {
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: 'Datei ist zu groß. Maximal 50MB erlaubt.' });
+                }
+                return res.status(400).json({ error: `Upload-Fehler: ${err.message}` });
+            }
+            return res.status(400).json({ error: err.message });
+        }
+
+        const { title, notes, cost, shop_link } = req.body;
+        
+        if (!title) {
+            return res.status(400).json({ error: 'Titel ist erforderlich' });
+        }
+
+        const image_path = req.file ? `/uploads/${req.file.filename}` : null;
+        
+        db.run(`
+            INSERT INTO baby_items (title, notes, cost, image_path, shop_link)
+            VALUES (?, ?, ?, ?, ?)
+        `, [title, notes || '', cost || 0, image_path, shop_link || ''], function(err) {
+            if (err) {
+                console.error('Fehler beim Erstellen des Baby Items:', err);
+                return res.status(500).json({ error: err.message });
+            }
+            
+            res.status(201).json({
+                id: this.lastID,
+                title,
+                notes: notes || '',
+                cost: cost || 0,
+                image_path,
+                shop_link: shop_link || ''
+            });
+        });
+    });
+});
+
+// PUT Baby Item aktualisieren
+app.put('/api/baby/items/:id', (req, res) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) {
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: 'Datei ist zu groß. Maximal 50MB erlaubt.' });
+                }
+                return res.status(400).json({ error: `Upload-Fehler: ${err.message}` });
+            }
+            return res.status(400).json({ error: err.message });
+        }
+
+        const itemId = req.params.id;
+        const { title, notes, cost, shop_link } = req.body;
+        
+        // Wenn ein neues Bild hochgeladen wurde
+        const image_path = req.file ? `/uploads/${req.file.filename}` : undefined;
+        
+        let query, params;
+        
+        if (image_path) {
+            // Mit Bild-Update
+            query = `
+                UPDATE baby_items 
+                SET title = ?, notes = ?, cost = ?, shop_link = ?, image_path = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `;
+            params = [title, notes, cost, shop_link, image_path, itemId];
+        } else {
+            // Ohne Bild-Update (behält vorhandenes Bild)
+            query = `
+                UPDATE baby_items 
+                SET title = ?, notes = ?, cost = ?, shop_link = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `;
+            params = [title, notes, cost, shop_link, itemId];
+        }
+        
+        db.run(query, params, function(err) {
+            if (err) {
+                console.error('Fehler beim Aktualisieren des Baby Items:', err);
+                return res.status(500).json({ error: err.message });
+            }
+            
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Baby Item nicht gefunden' });
+            }
+            
+            // Hole das aktualisierte Item
+            db.get('SELECT * FROM baby_items WHERE id = ?', [itemId], (err, row) => {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json(row);
+            });
+        });
+    });
+});
+
+// DELETE Baby Item löschen
+app.delete('/api/baby/items/:id', (req, res) => {
+    const itemId = req.params.id;
+    
+    // Erst das Item mit Bild-Info abrufen
+    db.get('SELECT image_path FROM baby_items WHERE id = ?', [itemId], (err, item) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (!item) {
+            return res.status(404).json({ error: 'Baby Item nicht gefunden' });
+        }
+        
+        // Item aus Datenbank löschen
+        db.run('DELETE FROM baby_items WHERE id = ?', [itemId], function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            // Wenn ein Bild vorhanden ist, auch das Bild löschen
+            if (item.image_path && !item.image_path.startsWith('data:')) {
+                const imagePath = path.join(__dirname, 'uploads', path.basename(item.image_path));
+                console.log('Versuche Baby Item Bild zu löschen:', imagePath);
+                
+                fs.unlink(imagePath, (unlinkErr) => {
+                    if (unlinkErr) {
+                        console.warn('Warnung: Baby Item Bild konnte nicht gelöscht werden:', unlinkErr.message);
+                    } else {
+                        console.log('✅ Baby Item Bild erfolgreich gelöscht:', item.image_path);
+                    }
+                });
+            }
+            
+            res.json({ message: 'Baby Item und zugehöriges Bild erfolgreich gelöscht' });
+        });
+    });
+});
+
 // Serve static files from React build in production (MUST be after all API routes)
 if (process.env.NODE_ENV === 'production') {
     const buildPath = path.join(__dirname, '../build');

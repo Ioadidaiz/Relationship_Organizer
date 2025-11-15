@@ -15,7 +15,8 @@
 5. [Notes API](#notes-api)
 6. [Images API](#images-api)
 7. [Relationships API](#relationships-api)
-8. [Health Check](#health-check)
+8. [Baby API](#baby-api)
+9. [Health Check](#health-check)
 
 ---
 
@@ -517,6 +518,173 @@ Neue Beziehung erstellen.
 
 ---
 
+## 👶 Baby API
+
+### Datenmodelle
+
+#### BabySavings
+```javascript
+{
+  id: number,                    // Auto-increment ID
+  amount: number,                // Aktueller Sparstand (decimal)
+  target: number,                // Sparziel (decimal, default: 5000)
+  created_at: string,            // Timestamp der Erstellung
+  updated_at: string             // Timestamp der letzten Änderung
+}
+```
+
+#### BabyItem
+```javascript
+{
+  id: number,                    // Auto-increment ID
+  title: string,                 // Artikel-Name
+  notes?: string,                // Notizen/Details
+  cost: number,                  // Kosten (decimal)
+  image_path?: string,           // Pfad zum Bild
+  shop_link?: string,            // Link zum Shop
+  created_at: string,            // Timestamp der Erstellung
+  updated_at: string             // Timestamp der letzten Änderung
+}
+```
+
+### GET `/api/baby/savings`
+Aktuellen Sparstand abrufen.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "amount": 1250.50,
+  "target": 5000.00,
+  "created_at": "2025-11-03T20:00:00.000Z",
+  "updated_at": "2025-11-03T21:30:00.000Z"
+}
+```
+
+### POST `/api/baby/savings/add`
+Geld zur Rücklage hinzufügen.
+
+**Request Body:**
+```json
+{
+  "amount": 100.00
+}
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "amount": 1350.50,
+  "target": 5000.00,
+  "added": 100.00
+}
+```
+
+**Validation:**
+- `amount` muss eine positive Zahl sein
+
+### PUT `/api/baby/savings`
+Sparstand oder Ziel direkt setzen.
+
+**Request Body:**
+```json
+{
+  "amount": 2000.00,
+  "target": 6000.00
+}
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "amount": 2000.00,
+  "target": 6000.00
+}
+```
+
+**Hinweis:** Beide Felder sind optional. Nicht angegebene Felder bleiben unverändert.
+
+### GET `/api/baby/items`
+Alle Baby-Artikel abrufen.
+
+**Response:** Array von BabyItem-Objekten
+```json
+[
+  {
+    "id": 1,
+    "title": "Kinderwagen",
+    "notes": "3-in-1 System, grau",
+    "cost": 599.99,
+    "image_path": "/uploads/image-123456789.jpg",
+    "shop_link": "https://shop.de/kinderwagen",
+    "created_at": "2025-11-03T20:00:00.000Z",
+    "updated_at": "2025-11-03T20:00:00.000Z"
+  }
+]
+```
+
+### POST `/api/baby/items`
+Neuen Baby-Artikel erstellen.
+
+**Request:** `multipart/form-data`
+- `title` (required): Artikel-Name
+- `notes` (optional): Notizen/Details
+- `cost` (optional, default: 0): Kosten
+- `shop_link` (optional): Link zum Shop
+- `image` (optional): Bilddatei
+
+**Response:**
+```json
+{
+  "id": 2,
+  "title": "Wickeltisch",
+  "notes": "Mit Regal, weiß",
+  "cost": 149.99,
+  "image_path": "/uploads/image-987654321.jpg",
+  "shop_link": "https://shop.de/wickeltisch"
+}
+```
+
+**Validation:**
+- `title` ist erforderlich
+- Bilder: max. 50MB, nur `image/*` Dateitypen
+
+### PUT `/api/baby/items/:id`
+Baby-Artikel aktualisieren.
+
+**Request:** `multipart/form-data`
+- `title` (required): Artikel-Name
+- `notes` (optional): Notizen/Details
+- `cost` (optional): Kosten
+- `shop_link` (optional): Link zum Shop
+- `image` (optional): Neue Bilddatei (ersetzt vorhandenes)
+
+**Response:** Aktualisiertes BabyItem-Objekt
+
+**Status Codes:**
+- `200 OK` - Erfolgreich aktualisiert
+- `404 Not Found` - Artikel existiert nicht
+
+### DELETE `/api/baby/items/:id`
+Baby-Artikel löschen.
+
+**Response:**
+```json
+{
+  "message": "Baby Item und zugehöriges Bild erfolgreich gelöscht"
+}
+```
+
+**Status Codes:**
+- `200 OK` - Erfolgreich gelöscht
+- `404 Not Found` - Artikel existiert nicht
+
+**Hinweis:** Verknüpfte Bilddateien werden automatisch vom Server gelöscht.
+
+---
+
 ## 🏥 Health Check
 
 ### GET `/api/health`
@@ -720,6 +888,11 @@ docker compose restart borganizer
 ## 📝 Changelog
 
 ### Version 1.0 (03.11.2025)
+- ✅ Baby Bereich mit vollständigem Backend implementiert
+  - Baby Savings API (GET/POST/PUT)
+  - Baby Items API (GET/POST/PUT/DELETE)
+  - Bild-Upload für Baby-Artikel
+  - Flip-Card Design mit Shop-Links
 - ✅ Task-Bilder API hinzugefügt (`POST /api/tasks/:id/images`, `DELETE`)
 - ✅ Flip-Card Animation für Tasks implementiert
 - ✅ Projektname in Task-Karten auf Startseite

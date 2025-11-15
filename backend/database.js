@@ -147,6 +147,37 @@ db.serialize(() => {
             console.error('Fehler beim Hinzufügen der image_paths Spalte:', err);
         }
     });
+
+    // ===== BABY BEREICH TABELLEN =====
+    
+    // Baby Savings Tabelle für Finanzplan
+    db.run(`CREATE TABLE IF NOT EXISTS baby_savings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        amount REAL NOT NULL DEFAULT 0,
+        target REAL NOT NULL DEFAULT 5000,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Baby Items Tabelle für Einkaufsliste
+    db.run(`CREATE TABLE IF NOT EXISTS baby_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        notes TEXT,
+        cost REAL NOT NULL DEFAULT 0,
+        image_path TEXT,
+        shop_link TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Initialisiere Baby Savings mit Standardwert falls leer
+    db.get('SELECT COUNT(*) as count FROM baby_savings', (err, row) => {
+        if (!err && row.count === 0) {
+            db.run('INSERT INTO baby_savings (amount, target) VALUES (0, 5000)');
+            console.log('✅ Baby Savings initialisiert');
+        }
+    });
 });
 
 module.exports = db;

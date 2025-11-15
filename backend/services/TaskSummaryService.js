@@ -49,7 +49,7 @@ class TaskSummaryService {
 
       for (const project of projects) {
         const projectTasks = allTasks.filter(task => task.project_id === project.id);
-        const activeTasks = projectTasks.filter(task => task.status !== 'completed');
+        const activeTasks = projectTasks.filter(task => task.status !== 'done' && task.status !== 'completed');
         
         if (activeTasks.length === 0) continue;
 
@@ -87,7 +87,7 @@ class TaskSummaryService {
       }
 
       // Zusätzliche Statistiken
-      const totalActiveTasks = allTasks.filter(task => task.status !== 'completed').length;
+      const totalActiveTasks = allTasks.filter(task => task.status !== 'done' && task.status !== 'completed').length;
       const overdueTasks = this.getOverdueTasks(allTasks);
       
       summary += `📊 *Übersicht:*\n`;
@@ -159,7 +159,7 @@ class TaskSummaryService {
     today.setHours(0, 0, 0, 0);
 
     return tasks.filter(task => {
-      if (!task.due_date || task.status === 'completed') return false;
+      if (!task.due_date || task.status === 'done' || task.status === 'completed') return false;
       const dueDate = new Date(task.due_date);
       dueDate.setHours(0, 0, 0, 0);
       return dueDate < today;
@@ -296,7 +296,7 @@ class TaskSummaryService {
     todayEnd.setHours(23, 59, 59, 999);
 
     return tasks.filter(task => {
-      if (!task.due_date || task.status === 'completed') return false;
+      if (!task.due_date || task.status === 'done' || task.status === 'completed') return false;
       const dueDate = new Date(task.due_date);
       return dueDate >= today && dueDate <= todayEnd;
     });
@@ -314,7 +314,7 @@ class TaskSummaryService {
     todayEnd.setHours(23, 59, 59, 999);
 
     return tasks.filter(task => {
-      if (task.status !== 'completed' || !task.completed_at) return false;
+      if ((task.status !== 'done' && task.status !== 'completed') || !task.completed_at) return false;
       const completedDate = new Date(task.completed_at);
       return completedDate >= today && completedDate <= todayEnd;
     });
@@ -335,7 +335,7 @@ class TaskSummaryService {
       tomorrowEnd.setHours(23, 59, 59, 999);
 
       return allTasks.filter(task => {
-        if (!task.due_date || task.status === 'completed') return false;
+        if (!task.due_date || task.status === 'done' || task.status === 'completed') return false;
         const dueDate = new Date(task.due_date);
         return dueDate >= tomorrow && dueDate <= tomorrowEnd;
       });

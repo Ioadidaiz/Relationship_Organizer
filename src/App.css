@@ -337,6 +337,10 @@ body:has(.panorama-header-fullwidth) .content-area {
   gap: 40px;
 }
 
+.rail {
+  position: relative;
+}
+
 .rail h2 {
   font-size: 20px;
   font-weight: 500;
@@ -344,6 +348,58 @@ body:has(.panorama-header-fullwidth) .content-area {
   color: #ffffff;
   padding-left: 0; /* Explizit linksbündig */
   text-align: left; /* Explizit linksbündige Textausrichtung */
+}
+
+/* Rail Container mit Scroll-Pfeilen */
+.rail-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Scroll-Pfeile */
+.rail-scroll-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 80px;
+  background: rgba(20, 20, 20, 0.7);
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rail-container:hover .rail-scroll-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.rail-scroll-btn:hover {
+  background: rgba(20, 20, 20, 0.9);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.rail-scroll-btn.left {
+  left: 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.rail-scroll-btn.right {
+  right: 0;
+  border-radius: 8px 0 0 8px;
+}
+
+.rail-scroll-btn:disabled {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .rail h2 .notes-count {
@@ -467,11 +523,49 @@ body:has(.panorama-header-fullwidth) .content-area {
   -webkit-overflow-scrolling: touch; /* Better mobile scrolling */
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* Internet Explorer and Edge */
+  scroll-snap-type: x mandatory; /* Snap scrolling aktivieren */
   
   /* Performance Optimierungen gegen Flackern */
   will-change: scroll-position;
   transform: translateZ(0); /* Hardware-Beschleunigung aktivieren */
   backface-visibility: hidden; /* Gegen Flackern beim Scrollen */
+}
+
+/* Scroll-Snap für Karten */
+.rail-items > .rail-card,
+.rail-items > .flip-card {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* Featured Card - doppelt so breit wie normale Karten */
+.rail-card.featured {
+  width: 480px !important; /* Kleiner als vorher, damit Scrollen möglich bleibt */
+  transition: width 0.3s ease-in-out;
+  pointer-events: auto; /* Ensure interactions work */
+}
+
+/* Verhindere Flip-Effekt bei featured cards während der Größenänderung */
+.rail-card.featured .flip-card-inner {
+  transform: none !important; /* Kein Flip während featured */
+}
+
+.rail-card.featured:hover .flip-card-inner {
+  transform: none !important; /* Kein Flip bei Hover wenn featured */
+}
+
+/* Featured card spezifische Anpassungen für bessere Darstellung */
+.rail-card.featured .card-content {
+  padding: 20px; /* Mehr padding für größere Karten */
+}
+
+.rail-card.featured .card-content h4 {
+  font-size: 1.3rem; /* Größerer Titel für featured cards */
+}
+
+.rail-card.featured .card-content p {
+  font-size: 1rem; /* Etwas größerer Text */
+  line-height: 1.5;
 }
 
 .rail-items::-webkit-scrollbar {
@@ -502,8 +596,9 @@ body:has(.panorama-header-fullwidth) .content-area {
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
-  will-change: transform;
+  will-change: width; /* Nur Breite animieren, nicht transform */
   flex-shrink: 0; /* Verhindert Schrumpfung */
+  transition: width 0.3s ease-in-out; /* Smooth width transition */
 }
 
 .flip-card-inner {
@@ -513,6 +608,7 @@ body:has(.panorama-header-fullwidth) .content-area {
   transition: transform 0.4s ease-in-out;
   transform-style: preserve-3d;
   border-radius: 8px;
+  backface-visibility: hidden;
 }
 
 .flip-card:hover .flip-card-inner {
@@ -746,6 +842,99 @@ body:has(.panorama-header-fullwidth) .content-area {
 .task-meta small {
   color: #ccc;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Dringende Aufgaben Sektion */
+.rail-urgent {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(255, 76, 76, 0.1), rgba(255, 140, 0, 0.1));
+  border-radius: 12px;
+  border-left: 4px solid #ff4c4c;
+}
+
+.rail-urgent h3 {
+  color: #ff4c4c;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rail-urgent h3::before {
+  content: "⚠️";
+  font-size: 1.2em;
+}
+
+/* Überfällig Badge */
+.overdue-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #ff4c4c, #c92a2a);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(255, 76, 76, 0.4);
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(255, 76, 76, 0.4);
+  }
+  50% {
+    box-shadow: 0 2px 16px rgba(255, 76, 76, 0.8);
+  }
+}
+
+/* Heute fällig Badge */
+.today-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #ffd93d, #ffb700);
+  color: #1a1a1a;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(255, 217, 61, 0.4);
+  animation: pulse-yellow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-yellow {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(255, 217, 61, 0.4);
+  }
+  50% {
+    box-shadow: 0 2px 16px rgba(255, 217, 61, 0.8);
+  }
+}
+
+/* Styling für überfällige Tasks */
+.overdue-task .flip-card-front {
+  border: 2px solid #ff4c4c;
+  box-shadow: 0 4px 12px rgba(255, 76, 76, 0.3);
+}
+
+.overdue-task:hover .flip-card-front {
+  box-shadow: 0 6px 20px rgba(255, 76, 76, 0.5);
+}
+
+/* Styling für heute fällige Tasks */
+.today-task .flip-card-front {
+  border: 2px solid #ffd93d;
+  box-shadow: 0 4px 12px rgba(255, 217, 61, 0.3);
+}
+
+.today-task:hover .flip-card-front {
+  box-shadow: 0 6px 20px rgba(255, 217, 61, 0.5);
 }
 
 .task-project {
@@ -3411,7 +3600,7 @@ body:has(.panorama-header-fullwidth) .content-area {
   margin-top: 8px;
 }
 
-/* Baby Items Grid */
+/* Baby Items Grid - mit Flip Cards */
 .baby-items-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -3419,64 +3608,139 @@ body:has(.panorama-header-fullwidth) .content-area {
   margin-bottom: 20px;
 }
 
-.baby-item-card {
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
+/* Baby Item Flip Card - erbt die flip-card Funktionalität */
+.baby-item-flip-card {
+  height: 320px; /* Konsistente Höhe für Baby-Kacheln */
+}
+
+.baby-item-flip-card .flip-card-inner {
   position: relative;
-}
-
-.baby-item-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  border-color: rgba(102, 126, 234, 0.5);
-}
-
-.baby-item-image {
-  width: 100%;
-  height: 180px;
-  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.baby-item-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  text-align: center;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
 }
 
-.baby-item-placeholder {
-  font-size: 4rem;
-  opacity: 0.3;
+.baby-item-flip-card:hover .flip-card-inner {
+  transform: rotateY(180deg);
 }
 
-.baby-item-content {
-  padding: 16px;
+.baby-item-flip-card .flip-card-front,
+.baby-item-flip-card .flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.baby-item-content h3 {
-  color: #e5e5e5;
-  font-size: 1.2rem;
-  margin: 0 0 8px 0;
+.baby-item-flip-card .flip-card-back {
+  transform: rotateY(180deg);
+}
+
+/* Baby Item spezifische Styles */
+.baby-item-cost-preview {
+  color: #667eea;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
 }
 
 .baby-item-notes {
   color: #94a3b8;
   font-size: 0.9rem;
   line-height: 1.5;
-  margin: 0 0 12px 0;
-  min-height: 40px;
+
+/* Stories / Map styles */
+.stories-page {
+  padding: 1rem 0;
+}
+
+#stories-map {
+  border: 1px solid rgba(255,255,255,0.04);
+  background: #0b1220;
+}
+
+.story-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  color: #ffdd57;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+
+.home-marker {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #ffffff;
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6);
+  animation: pulse-home 2s ease-in-out infinite;
+}
+
+@keyframes pulse-home {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.9);
+    transform: scale(1.05);
+  }
+}
+
+.map-loading {
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+  margin: 8px 0 12px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.baby-item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .baby-item-cost {
   color: #667eea;
   font-size: 1.3rem;
   font-weight: 700;
+}
+
+.baby-item-shop-link {
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.baby-item-shop-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .baby-item-delete {
@@ -3492,13 +3756,9 @@ body:has(.panorama-header-fullwidth) .content-area {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0;
   transition: all 0.3s ease;
   font-size: 1.2rem;
-}
-
-.baby-item-card:hover .baby-item-delete {
-  opacity: 1;
+  z-index: 10;
 }
 
 .baby-item-delete:hover {
@@ -3521,12 +3781,9 @@ body:has(.panorama-header-fullwidth) .content-area {
   color: #667eea;
 }
 
-/* Empty State */
+/* Empty State in Baby Grid */
 .baby-items-grid .empty-state {
   grid-column: 1 / -1;
-  text-align: center;
-  padding: 60px 20px;
-  color: #64748b;
 }
 
 .baby-items-grid .empty-state p {

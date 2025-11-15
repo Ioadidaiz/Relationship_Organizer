@@ -327,6 +327,180 @@ class ApiService {
     }
   }
 
+  // ===== BABY SERVICES =====
+
+  async getBabySavings(): Promise<{ id: number; amount: number; target: number }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/baby/savings`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Baby Savings:', error);
+      throw error;
+    }
+  }
+
+  async addBabySavings(amount: number): Promise<{ id: number; amount: number; target: number; added: number }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/baby/savings/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Fehler beim Hinzufügen von Baby Savings:', error);
+      throw error;
+    }
+  }
+
+  async updateBabySavings(amount?: number, target?: number): Promise<{ id: number; amount: number; target: number }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/baby/savings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount, target }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren der Baby Savings:', error);
+      throw error;
+    }
+  }
+
+  async getBabyItems(): Promise<Array<{
+    id: number;
+    title: string;
+    notes: string;
+    cost: number;
+    image_path?: string;
+    shop_link?: string;
+    created_at: string;
+    updated_at: string;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/baby/items`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Baby Items:', error);
+      throw error;
+    }
+  }
+
+  async createBabyItem(item: {
+    title: string;
+    notes?: string;
+    cost?: number;
+    shop_link?: string;
+  }, image?: File): Promise<{
+    id: number;
+    title: string;
+    notes: string;
+    cost: number;
+    image_path?: string;
+    shop_link: string;
+  }> {
+    try {
+      const formData = new FormData();
+      formData.append('title', item.title);
+      formData.append('notes', item.notes || '');
+      formData.append('cost', String(item.cost || 0));
+      formData.append('shop_link', item.shop_link || '');
+      
+      if (image) {
+        formData.append('image', image);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/baby/items`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Fehler beim Erstellen des Baby Items:', error);
+      throw error;
+    }
+  }
+
+  async updateBabyItem(id: number, item: {
+    title: string;
+    notes?: string;
+    cost?: number;
+    shop_link?: string;
+  }, image?: File): Promise<{
+    id: number;
+    title: string;
+    notes: string;
+    cost: number;
+    image_path?: string;
+    shop_link: string;
+  }> {
+    try {
+      const formData = new FormData();
+      formData.append('title', item.title);
+      formData.append('notes', item.notes || '');
+      formData.append('cost', String(item.cost || 0));
+      formData.append('shop_link', item.shop_link || '');
+      
+      if (image) {
+        formData.append('image', image);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/baby/items/${id}`, {
+        method: 'PUT',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren des Baby Items:', error);
+      throw error;
+    }
+  }
+
+  async deleteBabyItem(id: number): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/baby/items/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Löschen des Baby Items:', error);
+      throw error;
+    }
+  }
+
   // ===== UTILITY METHODS =====
   
   getImageUrl(imagePath: string): string {

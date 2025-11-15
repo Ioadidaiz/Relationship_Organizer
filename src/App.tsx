@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { apiService, CalendarEvent, Note } from './services/apiService';
+import Stories from './pages/Stories';
 
 // Temporäres Project Interface direkt hier definiert
 interface Project {
@@ -111,9 +112,9 @@ function App() {
     color: '#4a9eff'
   });
 
-  // Baby States (Frontend only - kein Backend noch)
+  // Baby States
   const [babySavings, setBabySavings] = useState(0); // Aktueller Sparstand
-  const [babyTarget] = useState(5000); // Sparziel
+  const [babyTarget, setBabyTarget] = useState(5000); // Sparziel
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
   const [moneyToAdd, setMoneyToAdd] = useState('');
   const [babyItems, setBabyItems] = useState<Array<{
@@ -121,22 +122,33 @@ function App() {
     title: string;
     notes: string;
     cost: number;
-    image?: string;
+    image_path?: string;
+    shop_link?: string;
   }>>([]);
   const [showBabyItemModal, setShowBabyItemModal] = useState(false);
+  const [editingBabyItem, setEditingBabyItem] = useState<{
+    id: number;
+    title: string;
+    notes: string;
+    cost: number;
+    image_path?: string;
+    shop_link?: string;
+  } | null>(null);
   const [newBabyItem, setNewBabyItem] = useState({
     title: '',
     notes: '',
     cost: 0,
-    image: ''
+    shopLink: ''
   });
+  const [babyItemImage, setBabyItemImage] = useState<File | null>(null);
 
-  // Lade Events und Notizen beim Start
+  // Lade Events, Notizen und Baby-Daten beim Start
   useEffect(() => {
     loadEvents();
     loadNotes();
     loadProjects(); // Projekte laden
     loadTasks(); // Tasks laden
+    loadBabyData(); // Baby-Daten laden
     checkServerConnection();
     loadCurrentHeroImage();
   }, []);
@@ -164,6 +176,105 @@ function App() {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  // Featured Card Logic - macht erste sichtbare Karte in jeder Rail doppelt so breit
+  useEffect(() => {
+    const setupFeaturedCards = () => {
+      const rails = document.querySelectorAll('.rail-items');
+      
+      const updateFeaturedCard = (railContainer: Element) => {
+        const cards = railContainer.querySelectorAll('.rail-card');
+        if (cards.length === 0) return;
+        
+        const containerRect = railContainer.getBoundingClientRect();
+        const scrollLeft = railContainer.scrollLeft;
+        const scrollWidth = railContainer.scrollWidth;
+        const clientWidth = railContainer.clientWidth;
+        
+        // Prüfe ob am Ende der Rail
+        const isAtEnd = scrollLeft + clientWidth >= scrollWidth - 10;
+        
+        let featuredCard: Element | null = null;
+        let minDistance = Infinity;
+        
+        cards.forEach((card) => {
+          const cardEl = card as HTMLElement;
+          // Entferne featured class von allen Karten
+          cardEl.classList.remove('featured');
+          
+          const cardRect = card.getBoundingClientRect();
+          // Berechne die Position der Karte relativ zum Container-Anfang
+          const cardLeftRelative = cardRect.left - containerRect.left;
+          
+          // Die Karte, die am nächsten zum linken Rand des Containers ist (aber noch sichtbar)
+          // soll featured werden - aber nur wenn nicht am Ende
+          if (!isAtEnd && cardLeftRelative >= -50 && cardLeftRelative < minDistance) {
+            minDistance = cardLeftRelative;
+            featuredCard = card;
+          }
+        });
+        
+        // Fallback: wenn keine Karte im sichtbaren Bereich oder am Anfang, nimm die erste
+        if (!featuredCard && cards.length > 0 && !isAtEnd && scrollLeft < 50) {
+          featuredCard = cards[0];
+        }
+        
+        // Füge featured class zur gewählten Karte hinzu
+        if (featuredCard) {
+          (featuredCard as HTMLElement).classList.add('featured');
+        }
+      };
+      
+      // Initial setup für alle Rails
+      rails.forEach((rail) => {
+        updateFeaturedCard(rail);
+        
+        // Scroll listener für jede Rail mit throttling
+        let scrollTimeout: NodeJS.Timeout;
+        const handleRailScroll = () => {
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => updateFeaturedCard(rail), 50);
+        };
+        
+        rail.addEventListener('scroll', handleRailScroll);
+        
+        // Cleanup in einem data attribute speichern für später
+        (rail as any)._featuredCardCleanup = () => {
+          clearTimeout(scrollTimeout);
+          rail.removeEventListener('scroll', handleRailScroll);
+        };
+      });
+    };
+    
+    // Setup mit kleiner Verzögerung, damit DOM komplett geladen ist
+    const timeoutId = setTimeout(setupFeaturedCards, 100);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      // Cleanup für alle Rail scroll listeners
+      const rails = document.querySelectorAll('.rail-items');
+      rails.forEach((rail) => {
+        if ((rail as any)._featuredCardCleanup) {
+          (rail as any)._featuredCardCleanup();
+        }
+      });
+    };
+  }, [activeSection, events, tasks, projects]); // Re-run wenn sich content ändert
+
+  // Scroll-Funktion für Rails (eine Kachel nach links/rechts)
+  const scrollRail = (railId: string, direction: 'left' | 'right') => {
+    const rail = document.getElementById(railId);
+    if (!rail) return;
+
+    const cardWidth = 280; // Breite einer normalen Karte
+    const gap = 16; // Gap zwischen Karten
+    const scrollAmount = cardWidth + gap;
+
+    rail.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  };
 
   // Bild-URL optimieren (für bereits hochgeladene Bilder)
   const getOptimizedImageUrl = (originalUrl: string): string => {
@@ -421,6 +532,30 @@ function App() {
     return upcomingTasks;
   };
 
+  // Hole Tasks die heute fällig oder überfällig sind
+  const getTodayAndOverdueTasks = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return tasks
+      .filter(task => {
+        if (task.status === 'done') return false; // Erledigte ausschließen
+        if (!task.due_date) return false; // Ohne Fälligkeitsdatum ausschließen
+        
+        const dueDate = new Date(task.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        
+        // Heute oder in der Vergangenheit
+        return dueDate <= today;
+      })
+      .sort((a, b) => {
+        // Sortiere nach Due Date aufsteigend (älteste zuerst)
+        const aDate = new Date(a.due_date!);
+        const bDate = new Date(b.due_date!);
+        return aDate.getTime() - bDate.getTime();
+      });
+  };
+
   // Formatiere die Tage bis zum Event
   const formatDaysUntil = (days: number, event?: any) => {
     // Für laufende mehrtägige Events
@@ -663,6 +798,26 @@ function App() {
     } catch (err) {
       console.error('Fehler beim Laden der Tasks:', err);
       setTasks([]);
+    }
+  };
+
+  // Baby-Daten laden
+  const loadBabyData = async () => {
+    try {
+      // Lade Sparstand
+      const savings = await apiService.getBabySavings();
+      setBabySavings(savings.amount);
+      setBabyTarget(savings.target);
+      
+      // Lade Items
+      const items = await apiService.getBabyItems();
+      setBabyItems(items.map(item => ({
+        ...item,
+        shopLink: item.shop_link
+      })));
+    } catch (err) {
+      console.error('Fehler beim Laden der Baby-Daten:', err);
+      // Fallback auf lokale Werte
     }
   };
 
@@ -1320,6 +1475,14 @@ function App() {
   ];
 
   const renderContent = () => {
+    // Quick route for Stories page
+    if (activeSection === 'stories') {
+      return (
+        <div className="stories-container">
+          <Stories />
+        </div>
+      );
+    }
     switch(activeSection) {
       case 'kalender':
         return (
@@ -1522,7 +1685,15 @@ function App() {
               {/* Anstehende Anlässe - nur Events */}
               <div className="rail">
                 <h2>Anstehende Anlässe</h2>
-                <div className="rail-items" id="upcoming-events">
+                <div className="rail-container">
+                  <button 
+                    className="rail-scroll-btn left" 
+                    onClick={() => scrollRail('upcoming-events', 'left')}
+                    aria-label="Nach links scrollen"
+                  >
+                    ‹
+                  </button>
+                  <div className="rail-items" id="upcoming-events">
                   {getUpcomingEvents().length > 0 ? (
                     getUpcomingEvents().map((event, index) => (
                       <div key={event.id || index} className="rail-card flip-card" onClick={() => handleStartPageItemClick(event)}>
@@ -1611,13 +1782,151 @@ function App() {
                       </div>
                     </div>
                   )}
+                  </div>
+                  <button 
+                    className="rail-scroll-btn right" 
+                    onClick={() => scrollRail('upcoming-events', 'right')}
+                    aria-label="Nach rechts scrollen"
+                  >
+                    ›
+                  </button>
                 </div>
               </div>
+
+              {/* Heute & Überfällige Aufgaben - Kritischer Fokus */}
+              {getTodayAndOverdueTasks().length > 0 && (
+                <div className="rail rail-urgent">
+                  <h2>🔥 Heute & Überfällig</h2>
+                  <div className="rail-container">
+                    <button 
+                      className="rail-scroll-btn left" 
+                      onClick={() => scrollRail('urgent-tasks', 'left')}
+                      aria-label="Nach links scrollen"
+                    >
+                      ‹
+                    </button>
+                    <div className="rail-items" id="urgent-tasks">
+                    {getTodayAndOverdueTasks().map((task, index) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const dueDate = new Date(task.due_date!);
+                      dueDate.setHours(0, 0, 0, 0);
+                      const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                      
+                      return (
+                        <div 
+                          key={task.id || index} 
+                          className={`rail-card flip-card ampel-${task.status || 'todo'} ${daysOverdue > 0 ? 'overdue-task' : 'today-task'}`}
+                          onClick={() => handleTaskClick(task)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <div className="flip-card-inner">
+                            {/* Vorderseite */}
+                            <div className="flip-card-front">
+                              <div 
+                                className="card-image"
+                                style={{
+                                  backgroundImage: `url(${task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"})`,
+                                  backgroundSize: 'cover',
+                                  backgroundPosition: 'center'
+                                }}
+                              >
+                                <img 
+                                  src={task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"}
+                                  alt={task.title}
+                                  onError={(e) => handleImageError(e, '/image2.jpg')}
+                                  loading="lazy"
+                                  style={{
+                                    imageRendering: 'auto',
+                                    filter: 'brightness(1.05) contrast(1.02)'
+                                  }}
+                                />
+                                <div className={`status-indicator status-${task.status || 'todo'}`}></div>
+                                {daysOverdue > 0 && (
+                                  <div className="overdue-badge">{daysOverdue} Tag{daysOverdue === 1 ? '' : 'e'} überfällig</div>
+                                )}
+                                {daysOverdue === 0 && (
+                                  <div className="today-badge">Heute fällig</div>
+                                )}
+                              </div>
+                              <div className="card-content">
+                                <h4>{task.title}</h4>
+                                <p className="task-project">{getProjectName(task.project_id)}</p>
+                                <small>
+                                  {daysOverdue > 0 
+                                    ? `⚠️ ${daysOverdue} Tag${daysOverdue === 1 ? '' : 'e'} überfällig`
+                                    : '📅 Heute fällig'
+                                  }
+                                </small>
+                              </div>
+                            </div>
+                            
+                            {/* Rückseite */}
+                            <div className="flip-card-back">
+                              <div 
+                                className="card-image"
+                                style={{
+                                  backgroundImage: `url(${task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"})`,
+                                  backgroundSize: 'cover',
+                                  backgroundPosition: 'center'
+                                }}
+                              >
+                                <img 
+                                  src={task.images && task.images.length > 0 ? task.images[0].path : "/image2.jpg"}
+                                  alt={task.title}
+                                  onError={(e) => handleImageError(e, '/image2.jpg')}
+                                  loading="lazy"
+                                  style={{
+                                    imageRendering: 'auto',
+                                    filter: 'brightness(1.05) contrast(1.02)'
+                                  }}
+                                />
+                                <div className="image-overlay"></div>
+                              </div>
+                              <div className="card-content card-content-back">
+                                <h4>{task.title}</h4>
+                                <p className="task-description">
+                                  {renderTaskContent(task)}
+                                </p>
+                                <div className="task-meta">
+                                  <small className="task-project">{getProjectName(task.project_id)}</small>
+                                  <small>
+                                    {daysOverdue > 0 
+                                      ? `⚠️ ${daysOverdue} Tag${daysOverdue === 1 ? '' : 'e'} überfällig`
+                                      : '📅 Heute fällig'
+                                    }
+                                  </small>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    </div>
+                    <button 
+                      className="rail-scroll-btn right" 
+                      onClick={() => scrollRail('urgent-tasks', 'right')}
+                      aria-label="Nach rechts scrollen"
+                    >
+                      ›
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Anstehende Aufgaben */}
               <div className="rail">
                 <h2>Anstehende Aufgaben</h2>
-                <div className="rail-items" id="upcoming-tasks">
+                <div className="rail-container">
+                  <button 
+                    className="rail-scroll-btn left" 
+                    onClick={() => scrollRail('upcoming-tasks', 'left')}
+                    aria-label="Nach links scrollen"
+                  >
+                    ‹
+                  </button>
+                  <div className="rail-items" id="upcoming-tasks">
                   {getUpcomingTasks().length > 0 ? (
                     getUpcomingTasks().map((task, index) => (
                       <div 
@@ -1769,27 +2078,14 @@ function App() {
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
-
-              {/* Kleine Gesten */}
-              <div className="rail">
-                <h2>Kleine Gesten (≤10 Min)</h2>
-                <div className="rail-items" id="kleine-gesten">
-                  <div className="rail-card">
-                    <div className="card-image"></div>
-                    <div className="card-content">
-                      <h4>Lieblings-Snack</h4>
-                      <p>5 min</p>
-                    </div>
                   </div>
-                  <div className="rail-card">
-                    <div className="card-image"></div>
-                    <div className="card-content">
-                      <h4>Süße Nachricht</h4>
-                      <p>2 min</p>
-                    </div>
-                  </div>
+                  <button 
+                    className="rail-scroll-btn right" 
+                    onClick={() => scrollRail('upcoming-tasks', 'right')}
+                    aria-label="Nach rechts scrollen"
+                  >
+                    ›
+                  </button>
                 </div>
               </div>
             </div>
@@ -2390,7 +2686,12 @@ function App() {
                 <h2>🛒 Einkaufsliste</h2>
                 <button 
                   className="add-btn"
-                  onClick={() => setShowBabyItemModal(true)}
+                  onClick={() => {
+                    setEditingBabyItem(null);
+                    setNewBabyItem({ title: '', notes: '', cost: 0, shopLink: '' });
+                    setBabyItemImage(null);
+                    setShowBabyItemModal(true);
+                  }}
                 >
                   + Artikel hinzufügen
                 </button>
@@ -2399,31 +2700,121 @@ function App() {
               <div className="baby-items-grid">
                 {babyItems.length > 0 ? (
                   babyItems.map((item) => (
-                    <div key={item.id} className="baby-item-card">
-                      <div className="baby-item-image">
-                        {item.image ? (
-                          <img src={item.image} alt={item.title} />
-                        ) : (
-                          <div className="baby-item-placeholder">🍼</div>
-                        )}
+                    <div 
+                      key={item.id} 
+                      className="rail-card flip-card baby-item-flip-card"
+                      onClick={() => {
+                        setEditingBabyItem(item);
+                        setNewBabyItem({
+                          title: item.title,
+                          notes: item.notes,
+                          cost: item.cost,
+                          shopLink: item.shop_link || ''
+                        });
+                        setBabyItemImage(null);
+                        setShowBabyItemModal(true);
+                      }}
+                    >
+                      <div className="flip-card-inner">
+                        {/* Vorderseite */}
+                        <div className="flip-card-front">
+                          <div 
+                            className="card-image"
+                            style={{
+                              backgroundImage: `url(${item.image_path || '/image1.jpg'})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center'
+                            }}
+                          >
+                            <img 
+                              src={item.image_path || '/image1.jpg'} 
+                              alt={item.title}
+                              onError={(e) => handleImageError(e, '/image1.jpg')}
+                              loading="lazy"
+                              style={{
+                                imageRendering: 'auto',
+                                filter: 'brightness(1.05) contrast(1.02)'
+                              }}
+                            />
+                          </div>
+                          <div className="card-content">
+                            <h4>{item.title}</h4>
+                            <p className="baby-item-cost-preview">{item.cost.toFixed(2)}€</p>
+                          </div>
+                        </div>
+                        
+                        {/* Rückseite */}
+                        <div className="flip-card-back">
+                          <div 
+                            className="card-image"
+                            style={{
+                              backgroundImage: `url(${item.image_path || '/image1.jpg'})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center'
+                            }}
+                          >
+                            <img 
+                              src={item.image_path || '/image1.jpg'} 
+                              alt={item.title}
+                              onError={(e) => handleImageError(e, '/image1.jpg')}
+                              loading="lazy"
+                              style={{
+                                imageRendering: 'auto',
+                                filter: 'brightness(1.05) contrast(1.02)'
+                              }}
+                            />
+                            <div className="image-overlay"></div>
+                          </div>
+                          <div className="card-content card-content-back">
+                            <h4>{item.title}</h4>
+                            <p className="baby-item-notes">
+                              {item.notes || 'Keine Notizen vorhanden'}
+                            </p>
+                            <div className="baby-item-meta">
+                              <div className="baby-item-cost">{item.cost.toFixed(2)}€</div>
+                              {item.shop_link && (
+                                <a 
+                                  href={item.shop_link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="baby-item-shop-link"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  🛒 Zum Shop
+                                </a>
+                              )}
+                            </div>
+                            <button 
+                              className="baby-item-delete"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (window.confirm('Möchten Sie diesen Artikel wirklich löschen?')) {
+                                  try {
+                                    await apiService.deleteBabyItem(item.id);
+                                    setBabyItems(babyItems.filter(i => i.id !== item.id));
+                                  } catch (err) {
+                                    console.error('Fehler beim Löschen des Baby Items:', err);
+                                    setError('Fehler beim Löschen des Artikels.');
+                                  }
+                                }
+                              }}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="baby-item-content">
-                        <h3>{item.title}</h3>
-                        <p className="baby-item-notes">{item.notes}</p>
-                        <div className="baby-item-cost">{item.cost.toFixed(2)}€</div>
-                      </div>
-                      <button 
-                        className="baby-item-delete"
-                        onClick={() => setBabyItems(babyItems.filter(i => i.id !== item.id))}
-                      >
-                        🗑️
-                      </button>
                     </div>
                   ))
                 ) : (
-                  <div className="empty-state">
-                    <p>Noch keine Artikel hinzugefügt</p>
-                    <small>Klicke auf "+ Artikel hinzufügen" um zu starten</small>
+                  <div className="rail-card empty-state">
+                    <div className="card-image">
+                      <img src="/image1.jpg" alt="Keine Artikel" />
+                    </div>
+                    <div className="card-content">
+                      <h4>Noch keine Artikel</h4>
+                      <p>Erstelle deinen ersten Baby-Artikel!</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2463,12 +2854,19 @@ function App() {
                     </button>
                     <button 
                       className="save-btn"
-                      onClick={() => {
+                      onClick={async () => {
                         const amount = parseFloat(moneyToAdd);
                         if (!isNaN(amount) && amount > 0) {
-                          setBabySavings(prev => prev + amount);
-                          setMoneyToAdd('');
-                          setShowAddMoneyModal(false);
+                          try {
+                            const result = await apiService.addBabySavings(amount);
+                            setBabySavings(result.amount);
+                            setBabyTarget(result.target);
+                            setMoneyToAdd('');
+                            setShowAddMoneyModal(false);
+                          } catch (err) {
+                            console.error('Fehler beim Hinzufügen von Geld:', err);
+                            setError('Fehler beim Speichern des Betrags.');
+                          }
                         }
                       }}
                     >
@@ -2481,11 +2879,21 @@ function App() {
 
             {/* Baby Artikel Modal */}
             {showBabyItemModal && (
-              <div className="modal-overlay" onClick={() => setShowBabyItemModal(false)}>
+              <div className="modal-overlay" onClick={() => {
+                setShowBabyItemModal(false);
+                setEditingBabyItem(null);
+                setBabyItemImage(null);
+                setNewBabyItem({ title: '', notes: '', cost: 0, shopLink: '' });
+              }}>
                 <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                   <div className="modal-header">
-                    <h2>Artikel hinzufügen</h2>
-                    <button className="close-btn" onClick={() => setShowBabyItemModal(false)}>✕</button>
+                    <h2>{editingBabyItem ? 'Artikel bearbeiten' : 'Artikel hinzufügen'}</h2>
+                    <button className="close-btn" onClick={() => {
+                      setShowBabyItemModal(false);
+                      setEditingBabyItem(null);
+                      setBabyItemImage(null);
+                      setNewBabyItem({ title: '', notes: '', cost: 0, shopLink: '' });
+                    }}>✕</button>
                   </div>
                   <div className="modal-body">
                     <div className="form-group">
@@ -2501,7 +2909,7 @@ function App() {
                     <div className="form-group">
                       <label>Notizen</label>
                       <textarea
-                        placeholder="Details, Marke, wo kaufen..."
+                        placeholder="Details, Marke, Besonderheiten..."
                         value={newBabyItem.notes}
                         onChange={(e) => setNewBabyItem({...newBabyItem, notes: e.target.value})}
                         rows={3}
@@ -2519,34 +2927,142 @@ function App() {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Bild-URL (optional)</label>
+                      <label>Shop-Link (optional)</label>
                       <input
-                        type="text"
-                        placeholder="https://..."
-                        value={newBabyItem.image}
-                        onChange={(e) => setNewBabyItem({...newBabyItem, image: e.target.value})}
+                        type="url"
+                        placeholder="https://shop.de/artikel..."
+                        value={newBabyItem.shopLink}
+                        onChange={(e) => setNewBabyItem({...newBabyItem, shopLink: e.target.value})}
                       />
-                      <small>Vorerst nur URL-Eingabe, später mit Upload</small>
+                      <small style={{ color: '#888', fontSize: '0.8rem' }}>
+                        Link zum Artikel im Shop - klickbar auf der Kachel
+                      </small>
+                    </div>
+                    <div className="form-group">
+                      <label>Bild (optional)</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // Datei-Größe prüfen (50MB Limit)
+                            if (file.size > 50 * 1024 * 1024) {
+                              setError('Datei ist zu groß. Maximal 50MB erlaubt.');
+                              return;
+                            }
+                            // Bild komprimieren
+                            try {
+                              const compressed = await compressImage(file);
+                              setBabyItemImage(compressed);
+                              setError(null);
+                            } catch (err) {
+                              console.error('Komprimierungsfehler:', err);
+                              setBabyItemImage(file);
+                            }
+                          } else {
+                            setBabyItemImage(null);
+                          }
+                        }}
+                      />
+                      <small style={{ color: '#888', fontSize: '0.8rem' }}>
+                        Unterstützte Formate: JPG, PNG, GIF. Max. 50MB.
+                        {babyItemImage && ' (Wird automatisch zu 300x300px komprimiert)'}
+                      </small>
+                      {babyItemImage && (
+                        <div className="image-preview">
+                          <img 
+                            src={URL.createObjectURL(babyItemImage)} 
+                            alt="Vorschau" 
+                            style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '4px', marginTop: '10px' }}
+                          />
+                          <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '5px' }}>
+                            {babyItemImage.name} ({(babyItemImage.size / 1024 / 1024).toFixed(2)} MB)
+                          </div>
+                        </div>
+                      )}
+                      {editingBabyItem?.image_path && !babyItemImage && (
+                        <div className="current-image">
+                          <label>Aktuelles Bild:</label>
+                          <img 
+                            src={editingBabyItem.image_path} 
+                            alt="Aktuelles Bild" 
+                            style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '4px', marginTop: '10px' }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="modal-actions">
-                    <button className="cancel-btn" onClick={() => setShowBabyItemModal(false)}>
+                    <button className="cancel-btn" onClick={() => {
+                      setShowBabyItemModal(false);
+                      setEditingBabyItem(null);
+                      setBabyItemImage(null);
+                      setNewBabyItem({ title: '', notes: '', cost: 0, shopLink: '' });
+                    }}>
                       Abbrechen
                     </button>
                     <button 
                       className="save-btn"
-                      onClick={() => {
+                      onClick={async () => {
                         if (newBabyItem.title.trim()) {
-                          setBabyItems(prev => [...prev, {
-                            ...newBabyItem,
-                            id: Date.now()
-                          }]);
-                          setNewBabyItem({ title: '', notes: '', cost: 0, image: '' });
-                          setShowBabyItemModal(false);
+                          try {
+                            setIsLoading(true);
+                            
+                            if (editingBabyItem) {
+                              // Bearbeitungsmodus - Backend aktualisieren
+                              const updatedItem = await apiService.updateBabyItem(
+                                editingBabyItem.id,
+                                {
+                                  title: newBabyItem.title,
+                                  notes: newBabyItem.notes,
+                                  cost: newBabyItem.cost,
+                                  shop_link: newBabyItem.shopLink
+                                },
+                                babyItemImage || undefined
+                              );
+                              
+                              // State aktualisieren
+                              setBabyItems(prev => prev.map(item => 
+                                item.id === editingBabyItem.id 
+                                  ? { ...updatedItem, shopLink: updatedItem.shop_link }
+                                  : item
+                              ));
+                            } else {
+                              // Neu-Hinzufügen-Modus - Backend erstellen
+                              const createdItem = await apiService.createBabyItem(
+                                {
+                                  title: newBabyItem.title,
+                                  notes: newBabyItem.notes,
+                                  cost: newBabyItem.cost,
+                                  shop_link: newBabyItem.shopLink
+                                },
+                                babyItemImage || undefined
+                              );
+                              
+                              // State aktualisieren
+                              setBabyItems(prev => [...prev, {
+                                ...createdItem,
+                                shopLink: createdItem.shop_link
+                              }]);
+                            }
+                            
+                            // Modal schließen und Felder zurücksetzen
+                            setNewBabyItem({ title: '', notes: '', cost: 0, shopLink: '' });
+                            setBabyItemImage(null);
+                            setEditingBabyItem(null);
+                            setShowBabyItemModal(false);
+                            setError(null);
+                          } catch (err) {
+                            console.error('Fehler beim Speichern des Baby Items:', err);
+                            setError('Fehler beim Speichern des Artikels. Bitte versuchen Sie es erneut.');
+                          } finally {
+                            setIsLoading(false);
+                          }
                         }
                       }}
                     >
-                      Hinzufügen
+                      {editingBabyItem ? 'Speichern' : 'Hinzufügen'}
                     </button>
                   </div>
                 </div>
